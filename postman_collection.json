@@ -1,0 +1,1456 @@
+{
+	"info": {
+		"_postman_id": "rays-autocare-clean-v1",
+		"name": "Backend Rays Autocare - Clean Collection",
+		"description": "Koleksi Postman sederhana untuk endpoint utama: Auth, OTP, Profile, dan User Management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('userEmail', res.data.email);",
+									"    if (res.data.debugOtp) {",
+									"        pm.environment.set('otpCode', res.data.debugOtp);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"email\": \"user{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 200 && res.token) {",
+									"    pm.environment.set('accessToken', res.token);",
+									"    if (res.user && res.user.id) {",
+									"        pm.environment.set('userId', res.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"otpCode\": \"{{otpCode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/verify-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 200 && res.debugOtp) {",
+									"    pm.environment.set('otpCode', res.debugOtp);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{userEmail}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/resend-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"resend-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 200 && res.token) {",
+									"    pm.environment.set('accessToken', res.token);",
+									"    if (res.user && res.user.id) {",
+									"        pm.environment.set('userId', res.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Google Auth",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 200 && res.token) {",
+									"    pm.environment.set('accessToken', res.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idToken\": \"google_id_token_from_frontend\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/google",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"google"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Users & Profile",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile & Input Phone",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"phone_number\": \"081234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Users (Admin / Super Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Role (Super Admin Only)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}/role",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}",
+								"role"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User (Super Admin Only)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. FAQs (Accordion & CMS)",
+			"item": [
+				{
+					"name": "Get FAQs (Public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/faqs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"faqs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All FAQs (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/faqs/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"faqs",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create FAQ (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('faqId', res.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Apakah Rays Autocare menyediakan layanan Home Service ke rumah?\",\n    \"answer\": \"Ya, kami adalah No. 1 Home Service Auto Detailing. Tim kami dapat datang langsung ke garasi rumah atau kantor Anda.\",\n    \"category\": \"layanan\",\n    \"order_index\": 1,\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/faqs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"faqs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update FAQ (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_index\": 2,\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/faqs/{{faqId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"faqs",
+								"{{faqId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete FAQ (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/faqs/{{faqId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"faqs",
+								"{{faqId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Testimonials (Social Proof & CMS)",
+			"item": [
+				{
+					"name": "Get Approved Testimonials (Public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/testimonials",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"testimonials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Testimonial (Customer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customer_name\": \"Fattah Ahmad\",\n    \"car_type\": \"Honda Civic Turbo\",\n    \"rating\": 5,\n    \"content\": \"Pengerjaan nano coating sangat detail, interior wangi dan jamur kaca hilang total. Sangat recommended!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/testimonials",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"testimonials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Testimonials for Moderation (Admin CMS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 200 && res.data && res.data.length > 0) {",
+									"    pm.environment.set('testimonialId', res.data[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/testimonials/all?status=pending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"testimonials",
+								"all"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Testimonial (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"is_approved\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/testimonials/{{testimonialId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"testimonials",
+								"{{testimonialId}}",
+								"approve"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Testimonial (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/testimonials/{{testimonialId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"testimonials",
+								"{{testimonialId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Blogs (WYSIWYG & Image Support)",
+			"item": [
+				{
+					"name": "List Published Blogs (Public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/blogs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Blog by Slug (Public WYSIWYG)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/blogs/detail/tips-merawat-cat-mobil-hitam",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs",
+								"detail",
+								"tips-merawat-cat-mobil-hitam"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Blog with HTML WYSIWYG & Image (Admin CMS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('blogId', res.data.id);",
+									"    pm.environment.set('blogSlug', res.data.slug);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Tips Merawat Cat Mobil Hitam\",\n    \"image_url\": \"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\",\n    \"excerpt\": \"Mobil warna hitam sangat rentan terhadap swirl mark. Simak cara merawatnya agar tetap wet-look.\",\n    \"content\": \"<h2>Kenapa Mobil Hitam Rentan Baret Halus?</h2><p>Warna hitam memantulkan cahaya lebih kontras sehingga baret laba-laba (swirl mark) sangat mudah terlihat.</p><ul><li>Gunakan metode Two-Bucket Wash</li><li>Pakai microfiber ber-GSM tinggi</li><li>Lakukan poles dan nano coating secara berkala</li></ul><img src=\\\"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\\\" alt=\\\"Detailing\\\" />\",\n    \"is_published\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/blogs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List All Blogs for CMS (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/blogs/admin/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs",
+								"admin",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Blog (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Tips Merawat Cat Mobil Hitam (Updated 2026)\",\n    \"is_published\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/blogs/{{blogId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs",
+								"{{blogId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Blog (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/blogs/{{blogId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"blogs",
+								"{{blogId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Product Categories (Marketplace)",
+			"item": [
+				{
+					"name": "Get Categories (Public with product_count)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category (Admin CMS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('categoryId', res.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Perawatan Eksterior\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Exterior Detailing & Wash\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/categories/{{categoryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories",
+								"{{categoryId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Category (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/categories/{{categoryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories",
+								"{{categoryId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Products & Gallery (Marketplace)",
+			"item": [
+				{
+					"name": "List Products (Public Catalog & Filter)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products?page=1&limit=12&sort=newest",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "12"
+								},
+								{
+									"key": "sort",
+									"value": "newest"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by Slug (Public Detail & Gallery)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/rays-premium-shampoo-ph-balance-500ml",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"rays-premium-shampoo-ph-balance-500ml"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product with Images (Admin CMS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('productId', res.data.id);",
+									"    pm.environment.set('productSlug', res.data.slug);",
+									"    if (res.data.images && res.data.images.length > 0) {",
+									"        pm.environment.set('productImageId', res.data.images[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category_id\": {{categoryId}},\n    \"name\": \"Rays Premium Shampoo pH Balance 500ml\",\n    \"description\": \"Shampoo mobil formula busa melimpah dengan pH balance netral, aman untuk mobil yang telah di-coating atau wax.\",\n    \"price\": 85000,\n    \"weight_grams\": 600,\n    \"stock\": 50,\n    \"is_active\": true,\n    \"images\": [\n        {\n            \"image_url\": \"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\",\n            \"is_primary\": true\n        },\n        {\n            \"image_url\": \"https://images.unsplash.com/photo-1607860108855-64acf2078ed9\",\n            \"is_primary\": false\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"price\": 79000,\n    \"stock\": 45\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Image to Gallery (Admin CMS)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"image_url\": \"https://images.unsplash.com/photo-1552519507-da3b142c6e3d\",\n    \"is_primary\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/{{productId}}/images",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"{{productId}}",
+								"images"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set Image as Primary (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/{{productId}}/images/{{productImageId}}/primary",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"{{productId}}",
+								"images",
+								"{{productImageId}}",
+								"primary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product Image (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/images/{{productImageId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"images",
+								"{{productImageId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product (Admin CMS Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Coupons & Weekday Discounts (Marketplace)",
+			"item": [
+				{
+					"name": "Validate Coupon (Public Customer Cart)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"WEEKDAYGLOW\",\n    \"subtotal\": 150000\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/coupons/validate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"coupons",
+								"validate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Coupons (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/coupons",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"coupons"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Weekday Coupon (Admin CMS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (pm.response.code === 201 && res.data) {",
+									"    pm.environment.set('couponId', res.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"WEEKDAYGLOW\",\n    \"discount_type\": \"percentage\",\n    \"discount_value\": 15,\n    \"min_purchase\": 100000,\n    \"valid_days\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"],\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/coupons",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"coupons"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Coupon (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"discount_value\": 20,\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/coupons/{{couponId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"coupons",
+								"{{couponId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Coupon (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/coupons/{{couponId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"coupons",
+								"{{couponId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Audit Logs (Super Admin Surveillance)",
+			"item": [
+				{
+					"name": "Get Audit Logs (Super Admin Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/audit-logs?page=1&limit=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Audit Logs by Action",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/audit-logs?action=ADMIN_LOGIN",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "action",
+									"value": "ADMIN_LOGIN"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Audit Logs by Entity Type",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/audit-logs?entity_type=product",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "entity_type",
+									"value": "product"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Audit Logs Keyword",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/audit-logs?search=harga",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "harga"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
