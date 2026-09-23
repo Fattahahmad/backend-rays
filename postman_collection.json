@@ -1451,6 +1451,301 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "10. Media Uploads (Local Storage)",
+			"item": [
+				{
+					"name": "Upload Single Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/upload/single?folder=products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"upload",
+								"single"
+							],
+							"query": [
+								{
+									"key": "folder",
+									"value": "products",
+									"description": "Pilihan: products, blogs, avatars, general"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Multiple Images (Max 5)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/upload/multiple?folder=products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"upload",
+								"multiple"
+							],
+							"query": [
+								{
+									"key": "folder",
+									"value": "products"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "11. Orders & Checkout (Marketplace)",
+			"item": [
+				{
+					"name": "Checkout Order (Customer)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (res.success && res.data && res.data.order) {",
+									"    pm.environment.set('orderId', res.data.order.id);",
+									"    pm.environment.set('orderNumber', res.data.order.order_number);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 2\n        }\n    ],\n    \"shipping_address\": \"Jl. Sudirman No. 45, Jakarta Pusat, DKI Jakarta 10220\",\n    \"courier\": \"JNE\",\n    \"courier_service\": \"REG\",\n    \"shipping_cost\": 20000,\n    \"coupon_code\": \"WEDNESDAY10\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/checkout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"checkout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Orders (Customer History)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/orders/my-orders?page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"my-orders"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order Detail by Order Number",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/orders/{{orderNumber}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"{{orderNumber}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin: List All Orders (CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/orders/admin/all?page=1&limit=20&status=pending_payment",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"admin",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "pending_payment"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin: Update Shipping Resi & Mark Shipped",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tracking_number\": \"JNE-SOC-20260923001\",\n    \"courier\": \"JNE\",\n    \"courier_service\": \"REG\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/admin/{{orderId}}/shipping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"admin",
+								"{{orderId}}",
+								"shipping"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin: Update Order Status (With Auto-Restock on Canceled)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"canceled\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/admin/{{orderId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"admin",
+								"{{orderId}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

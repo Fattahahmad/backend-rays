@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import apiRouter from './routes/index.ts';
 import { auditLogMiddleware } from './middlewares/audit.middleware.ts';
 
@@ -12,6 +13,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(auditLogMiddleware);
+
+// Static Uploads File Serving
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Base / Health-check Route
 app.get('/', (req, res) => {

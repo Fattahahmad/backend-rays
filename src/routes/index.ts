@@ -8,6 +8,8 @@ import categoryRoutes from './category.routes.ts';
 import productRoutes from './product.routes.ts';
 import couponRoutes from './coupon.routes.ts';
 import auditRoutes from './audit.routes.ts';
+import uploadRoutes from './upload.routes.ts';
+import orderRoutes from './order.routes.ts';
 
 const apiRouter = Router();
 
@@ -21,5 +23,7 @@ apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/products', productRoutes);
 apiRouter.use('/coupons', couponRoutes);
 apiRouter.use('/audit-logs', auditRoutes);
+apiRouter.use('/upload', uploadRoutes);
+apiRouter.use('/orders', orderRoutes);
 
 export default apiRouter;
