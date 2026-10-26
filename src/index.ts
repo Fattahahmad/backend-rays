@@ -1,9 +1,11 @@
 import 'dotenv/config';
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import apiRouter from './routes/index.ts';
 import { auditLogMiddleware } from './middlewares/audit.middleware.ts';
+import { initSocketServer } from './services/socket.service.ts';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,7 +50,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
 });
 
-app.listen(PORT, () => {
+// Inisialisasi HTTP Server dan Socket.io
+const server = http.createServer(app);
+initSocketServer(server);
+
+server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 

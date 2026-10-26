@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { query } from '../config/db.ts';
+import { sendMetaEvent } from '../services/meta.service.ts';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const VALID_ORDER_STATUSES = ['pending_payment', 'paid', 'processing', 'shipped', 'completed', 'canceled'];
@@ -183,11 +184,32 @@ export async function checkoutOrder(req: Request, res: Response): Promise<void> 
             );
         }
 
+        const createdOrder = newOrderResult.rows[0];
+
+        // Trigger Meta Conversions API (InitiateCheckout) secara asynchronous (non-blocking)
+        sendMetaEvent({
+            eventName: 'InitiateCheckout',
+            eventId: createdOrder.order_number,
+            userData: {
+                email: req.user?.email,
+                clientIp: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip,
+                clientUserAgent: req.headers['user-agent'] || undefined,
+            },
+            customData: {
+                currency: 'IDR',
+                value: grandTotal,
+                order_id: createdOrder.order_number,
+                num_items: validatedItems.length,
+                content_ids: validatedItems.map(i => i.product_id),
+                content_type: 'product',
+            },
+        }).catch(err => console.error('[Meta CAPI Checkout Error]:', err));
+
         res.status(201).json({
             success: true,
             message: 'Pesanan berhasil dibuat. Silakan lakukan pembayaran.',
             data: {
-                order: newOrderResult.rows[0],
+                order: createdOrder,
                 items: validatedItems.map(i => ({
                     product_id: i.product_id,
                     name: i.name,
@@ -462,6 +484,33 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
         }
 
         await query('UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, id]);
+
+        // Jika status diubah menjadi 'paid', trigger Meta Conversions API 'Purchase'
+        if (status === 'paid' && currentOrder.status !== 'paid') {
+            query(
+                `SELECT o.grand_total, o.order_number, u.email 
+                 FROM orders o 
+                 LEFT JOIN users u ON o.user_id = u.id 
+                 WHERE o.id = $1`,
+                [id]
+            ).then(res => {
+                if (res.rowCount && res.rowCount > 0) {
+                    const od = res.rows[0];
+                    sendMetaEvent({
+                        eventName: 'Purchase',
+                        eventId: od.order_number,
+                        userData: {
+                            email: od.email,
+                        },
+                        customData: {
+                            currency: 'IDR',
+                            value: od.grand_total,
+                            order_id: od.order_number,
+                        },
+                    }).catch(err => console.error('[Meta CAPI Purchase Error]:', err));
+                }
+            }).catch(err => console.error('[Meta CAPI Fetch Order Detail Error]:', err));
+        }
 
         res.json({
             success: true,

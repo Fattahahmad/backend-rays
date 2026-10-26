@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { query } from '../config/db.ts';
 import { recordAuditLog } from '../services/audit.service.ts';
+import { sendOtpEmail } from '../services/mail.service.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rays_autocare_secret_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -27,6 +28,8 @@ function generateToken(user: { id: number; email: string; role: string; name?: s
 export async function register(req: Request, res: Response): Promise<void> {
     try {
         const { name, email, password } = req.body;
+        const rawPhone = req.body.phone_number || req.body.phoneNumber || req.body.phone;
+        const cleanPhone = rawPhone ? String(rawPhone).trim() : null;
 
         if (!name || !email || !password) {
             res.status(400).json({ success: false, message: 'Nama, email, dan password wajib diisi.' });
@@ -45,16 +48,18 @@ export async function register(req: Request, res: Response): Promise<void> {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Jika user sudah ada tapi belum terverifikasi, update passwordnya
+        // Jika user sudah ada tapi belum terverifikasi, update password dan nomor handphone
         if (existingUser.rowCount > 0) {
             await query(
-                'UPDATE users SET name = $1, password = $2 WHERE email = $3',
-                [name, hashedPassword, normalizedEmail]
+                `UPDATE users 
+                 SET name = $1, password = $2, phone_number = COALESCE($3, phone_number) 
+                 WHERE email = $4`,
+                [name, hashedPassword, cleanPhone, normalizedEmail]
             );
         } else {
             await query(
-                'INSERT INTO users (name, email, password, role, is_email_verified) VALUES ($1, $2, $3, $4, $5)',
-                [name, normalizedEmail, hashedPassword, 'user', false]
+                'INSERT INTO users (name, email, password, phone_number, role, is_email_verified) VALUES ($1, $2, $3, $4, $5, $6)',
+                [name, normalizedEmail, hashedPassword, cleanPhone, 'user', false]
             );
         }
 
@@ -68,6 +73,9 @@ export async function register(req: Request, res: Response): Promise<void> {
         );
 
         console.log(`[OTP REGISTRATION] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+
+        // Kirim email OTP via Nodemailer (Mailtrap di Dev / Hostinger di Prod)
+        await sendOtpEmail(normalizedEmail, otpCode, name);
 
         res.status(201).json({
             success: true,
@@ -90,7 +98,8 @@ export async function register(req: Request, res: Response): Promise<void> {
  */
 export async function verifyOtp(req: Request, res: Response): Promise<void> {
     try {
-        const { email, otpCode } = req.body;
+        const email = req.body.email;
+        const otpCode = req.body.otpCode || req.body.otp;
 
         if (!email || !otpCode) {
             res.status(400).json({ success: false, message: 'Email dan kode OTP wajib diisi.' });
@@ -128,7 +137,15 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
             success: true,
             message: 'Email berhasil diverifikasi!',
             token,
-            user,
+            accessToken: token, // Alias agar kompatibel dengan frontend yang membaca token maupun accessToken
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar_url: user.avatar_url,
+                phone_number: user.phone_number,
+            },
             needsPhone: !user.phone_number,
         });
     } catch (error) {
@@ -166,6 +183,9 @@ export async function resendOtp(req: Request, res: Response): Promise<void> {
         );
 
         console.log(`[RESEND OTP] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+
+        // Kirim email OTP via Nodemailer (Mailtrap di Dev / Hostinger di Prod)
+        await sendOtpEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
 
         res.json({
             success: true,
@@ -247,6 +267,7 @@ export async function login(req: Request, res: Response): Promise<void> {
             success: true,
             message: 'Login berhasil!',
             token,
+            accessToken: token,
             user: {
                 id: user.id,
                 name: user.name,
@@ -269,10 +290,10 @@ export async function login(req: Request, res: Response): Promise<void> {
  */
 export async function googleAuth(req: Request, res: Response): Promise<void> {
     try {
-        const { idToken } = req.body;
+        const idToken = req.body.idToken || req.body.id_token || req.body.credential || req.body.token;
 
         if (!idToken) {
-            res.status(400).json({ success: false, message: 'Google idToken wajib dikirimkan.' });
+            res.status(400).json({ success: false, message: 'Google idToken (atau credential) wajib dikirimkan.' });
             return;
         }
 
@@ -344,6 +365,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
             success: true,
             message: 'Login Google berhasil!',
             token,
+            accessToken: token,
             user: {
                 id: user.id,
                 name: user.name,

@@ -13,19 +13,23 @@
     "migrate:up": "tsx database/create_db.ts && node-pg-migrate -m database/migrations up",
     "migrate:down": "node-pg-migrate -m database/migrations down",
     "migrate:create": "node-pg-migrate -m database/migrations -j sql create",
-    "db:export": "tsx database/export_mysql.ts"
+    "db:export": "tsx database/export_mysql.ts",
+    "db:seed": "tsx database/seed.ts"
   },
   "author": "Fattah Ahmad",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google-analytics/data": "^7.2.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "google-auth-library": "^11.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
-    "mysql2": "^3.24.4"
+    "mysql2": "^3.24.4",
+    "nodemailer": "^10.1.0",
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -34,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.6.2",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "dotenv": "^18.0.1",
     "node-pg-migrate": "^9.0.0",

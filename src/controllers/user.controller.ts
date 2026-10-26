@@ -36,7 +36,8 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
 export async function updateProfile(req: Request, res: Response): Promise<void> {
     try {
         const userId = req.user?.id;
-        const { name, phone_number, avatar_url } = req.body;
+        const { name, avatar_url } = req.body;
+        const phone = req.body.phone_number !== undefined ? req.body.phone_number : (req.body.phoneNumber !== undefined ? req.body.phoneNumber : req.body.phone);
 
         const fields: string[] = [];
         const values: any[] = [];
@@ -47,9 +48,9 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
             values.push(name.trim());
         }
 
-        if (phone_number !== undefined) {
+        if (phone !== undefined) {
             fields.push(`phone_number = $${index++}`);
-            values.push(phone_number.trim());
+            values.push(phone ? String(phone).trim() : null);
         }
 
         if (avatar_url !== undefined) {

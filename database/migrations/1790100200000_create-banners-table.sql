@@ -1,0 +1,18 @@
+-- Up Migration
+CREATE TABLE banners (
+    id SERIAL PRIMARY KEY,
+    sort_order INT NOT NULL DEFAULT 1,
+    image_url VARCHAR(500) NOT NULL,
+    badge_text VARCHAR(255),
+    title VARCHAR(255) NOT NULL,
+    button_show BOOLEAN NOT NULL DEFAULT TRUE,
+    button_text VARCHAR(255) DEFAULT 'LIHAT PROMO',
+    button_url VARCHAR(500) DEFAULT '/promo',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL
+);
+
+-- Down Migration
+DROP TABLE IF EXISTS banners CASCADE;

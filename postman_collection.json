@@ -1,14 +1,14 @@
 {
 	"info": {
-		"_postman_id": "rays-autocare-clean-v1",
+		"_postman_id": "163739ec-3c7c-4efb-a24a-45c555b0cd94",
 		"name": "Backend Rays Autocare - Clean Collection",
-		"description": "Koleksi Postman sederhana untuk endpoint utama: Auth, OTP, Profile, dan User Management",
+		"description": "# Backend Rays Autocare - REST API Documentation\n\nDokumentasi resmi API untuk layanan bengkel detailing dan marketplace e-commerce **Rays Autocare**.\n\n### Base URL\n- **Development (Local):** `http://localhost:3001/api`\n- **Production (Hostinger):** `https://api.raysautocare.com/api`\n\n### Hak Akses & Autentikasi (Bearer Token)\nSistem menggunakan JSON Web Token (JWT). Masukkan header berikut pada request yang diproteksi:\n```http\nAuthorization: Bearer <access_token>\n```\n\n| Role | Deskripsi Akses |\n| :--- | :--- |\n| **Public** | Akses bebas tanpa token (Katalog produk, FAQs, Testimoni approved, Blog published, Cek kupon, Auth) |\n| **user** | Customer terautentikasi (Profil, Checkout pesanan, Riwayat order, Submit ulasan) |\n| **admin** | Admin operasional CMS (Manajemen produk, galeri, kategori, artikel blog, faq, status order, resi pengiriman) |\n| **super_admin** | Pengawas tertinggi (Seluruh akses admin + Manajemen role pengguna + Akses audit log surveillance) |\n",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:3000/api",
+			"value": "http://localhost:3001/api",
 			"type": "string"
 		}
 	],
@@ -23,11 +23,18 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
 									"const res = pm.response.json();",
+									"pm.test(\"Registrasi berhasil dan email terdaftar\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"email\");",
+									"});",
 									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('userEmail', res.data.email);",
+									"    pm.environment.set(\"userEmail\", res.data.email);",
 									"    if (res.data.debugOtp) {",
-									"        pm.environment.set('otpCode', res.data.debugOtp);",
+									"        pm.environment.set(\"otpCode\", res.data.debugOtp);",
 									"    }",
 									"}"
 								],
@@ -45,7 +52,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"email\": \"user{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"email\": \"user{{$timestamp}}@example.com\",\n    \"password\": \"password123\",\n    \"phone_number\": \"081234567890\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/auth/register",
@@ -56,9 +63,85 @@
 								"auth",
 								"register"
 							]
-						}
+						},
+						"description": "### Register Customer Baru\n\n**Metode:** `POST`  \n**Path:** `/auth/register`  \n**Otentikasi:** `None`  \n\nMembuat akun baru dengan role default `user`. Kode OTP 6-digit otomatis dibuat dan dikirim ke alamat email pelanggan (berlaku 5 menit). Pada mode development, `debugOtp` dikembalikan pada respons JSON.\n\n#### Request Body (JSON)\n\n| Field | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `name` | `string` | Ya | Nama lengkap pelanggan |\n| `email` | `string` | Ya | Alamat email aktif yang valid |\n| `password` | `string` | Ya | Kata sandi minimal 6 karakter |\n| `phone_number` | `string` | Opsional | Nomor handphone / WhatsApp pelanggan |\n\n"
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"email\": \"user{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "### Register Customer Baru\n\n**Metode:** `POST`  \n**Path:** `/auth/register`  \n**Otentikasi:** `None`  \n\nMembuat akun baru dengan role default `user`. Kode OTP 6-digit otomatis dibuat dan dikirim ke alamat email pelanggan (berlaku 10 menit). Pada mode development, `debugOtp` dikembalikan pada respons JSON.\n\n#### Request Body (JSON)\n\n| Field | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `name` | `string` | Ya | Nama lengkap pelanggan |\n| `email` | `string` | Ya | Alamat email aktif yang valid |\n| `password` | `string` | Ya | Kata sandi minimal 6 karakter |\n\n"
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Registrasi berhasil. Kode OTP verifikasi telah dikirim ke email customer@example.com.\",\n    \"data\": {\n        \"id\": 12,\n        \"name\": \"Fattah Ahmad\",\n        \"email\": \"customer@example.com\",\n        \"role\": \"user\",\n        \"debugOtp\": \"582914\"\n    }\n}"
+						},
+						{
+							"name": "400 Bad Request",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"email\": \"user{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "### Register Customer Baru\n\n**Metode:** `POST`  \n**Path:** `/auth/register`  \n**Otentikasi:** `None`  \n\nMembuat akun baru dengan role default `user`. Kode OTP 6-digit otomatis dibuat dan dikirim ke alamat email pelanggan (berlaku 10 menit). Pada mode development, `debugOtp` dikembalikan pada respons JSON.\n\n#### Request Body (JSON)\n\n| Field | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `name` | `string` | Ya | Nama lengkap pelanggan |\n| `email` | `string` | Ya | Alamat email aktif yang valid |\n| `password` | `string` | Ya | Kata sandi minimal 6 karakter |\n\n"
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"message\": \"Email sudah terdaftar. Silakan gunakan email lain atau login.\"\n}"
+						}
+					]
 				},
 				{
 					"name": "Verify OTP",
@@ -67,11 +150,19 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 200 && res.token) {",
-									"    pm.environment.set('accessToken', res.token);",
+									"pm.test(\"Verifikasi OTP sukses dan token JWT terbit\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.accessToken || res.token).to.be.a(\"string\");",
+									"});",
+									"if (pm.response.code === 200) {",
+									"    const token = res.accessToken || res.token;",
+									"    if (token) pm.environment.set(\"accessToken\", token);",
 									"    if (res.user && res.user.id) {",
-									"        pm.environment.set('userId', res.user.id);",
+									"        pm.environment.set(\"userId\", res.user.id);",
 									"    }",
 									"}"
 								],
@@ -102,7 +193,80 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (OTP Valid & Verified)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"otpCode\": \"{{otpCode}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/verify-otp",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"verify-otp"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Email berhasil diverifikasi!\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc5Mjk4NTg4Nn0.4e62l4JjHjTcLW...\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc5Mjk4NTg4Nn0.4e62l4JjHjTcLW...\",\n    \"user\": {\n        \"id\": 12,\n        \"name\": \"Fattah Ahmad\",\n        \"email\": \"customer@example.com\",\n        \"role\": \"user\",\n        \"avatar_url\": null,\n        \"phone_number\": \"081234567890\"\n    },\n    \"needsPhone\": false\n}"
+						},
+						{
+							"name": "400 Bad Request (OTP Expired / Invalid)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"otpCode\": \"{{otpCode}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/verify-otp",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"verify-otp"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"message\": \"Kode OTP tidak valid atau sudah kedaluwarsa.\"\n}"
+						}
+					]
 				},
 				{
 					"name": "Resend OTP",
@@ -111,10 +275,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 200 && res.debugOtp) {",
-									"    pm.environment.set('otpCode', res.debugOtp);",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -143,21 +310,63 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (New OTP Sent)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{userEmail}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/resend-otp",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"resend-otp"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kode OTP baru telah dikirimkan ke email Anda.\",\n    \"debugOtp\": \"749102\"\n}"
+						}
+					]
 				},
 				{
-					"name": "Login",
+					"name": "Login Super Admin",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 200 && res.token) {",
-									"    pm.environment.set('accessToken', res.token);",
-									"    if (res.user && res.user.id) {",
-									"        pm.environment.set('userId', res.user.id);",
-									"    }",
+									"pm.test(\"Login Super Admin berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.user.role).to.eql(\"super_admin\");",
+									"});",
+									"if (res.token) {",
+									"    pm.environment.set(\"accessToken\", res.token);",
+									"    pm.environment.set(\"superAdminToken\", res.token);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -174,7 +383,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"email\": \"{{superAdminEmail}}\",\n    \"password\": \"{{superAdminPassword}}\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/auth/login",
@@ -185,9 +394,221 @@
 								"auth",
 								"login"
 							]
-						}
+						},
+						"description": "### Login Super Admin\n\nLogin menggunakan akun Super Administrator default (`superadmin@raysautocare.com`). Token otomatis disimpan ke `accessToken` untuk mengetes seluruh endpoint CMS dan surveillance audit log."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Super Admin Access Granted)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{superAdminEmail}}\",\n    \"password\": \"{{superAdminPassword}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Login berhasil!\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NSwiZW1haWwiOiJzdXBlcmFkbWluQHJheXNhdXRvY2FyZS5jb20iLCJyb2xlIjoic3VwZXJfYWRtaW4ifQ...\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NSwiZW1haWwiOiJzdXBlcmFkbWluQHJheXNhdXRvY2FyZS5jb20iLCJyb2xlIjoic3VwZXJfYWRtaW4ifQ...\",\n    \"user\": {\n        \"id\": 5,\n        \"name\": \"Super Administrator Rays\",\n        \"email\": \"superadmin@raysautocare.com\",\n        \"role\": \"super_admin\",\n        \"avatar_url\": null,\n        \"phone_number\": null\n    },\n    \"needsPhone\": true\n}"
+						}
+					]
+				},
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Login Admin berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.user.role).to.eql(\"admin\");",
+									"});",
+									"if (res.token) {",
+									"    pm.environment.set(\"accessToken\", res.token);",
+									"    pm.environment.set(\"adminToken\", res.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{adminEmail}}\",\n    \"password\": \"{{adminPassword}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "### Login Admin Operasional\n\nLogin menggunakan akun Admin default (`admin@raysautocare.com`). Token otomatis disimpan ke `accessToken` untuk menguji manajemen produk, artikel, kupon, dan pesanan."
+					},
+					"response": [
+						{
+							"name": "200 OK (Admin Access Granted)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{adminEmail}}\",\n    \"password\": \"{{adminPassword}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Login berhasil!\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NiwiZW1haWwiOiJhZG1pbkByYXlzYXV0b2NhcmUuY29tIiwicm9sZSI6ImFkbWluIn0...\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NiwiZW1haWwiOiJhZG1pbkByYXlzYXV0b2NhcmUuY29tIiwicm9sZSI6ImFkbWluIn0...\",\n    \"user\": {\n        \"id\": 6,\n        \"name\": \"Admin Operasional Rays\",\n        \"email\": \"admin@raysautocare.com\",\n        \"role\": \"admin\",\n        \"avatar_url\": null,\n        \"phone_number\": null\n    },\n    \"needsPhone\": true\n}"
+						}
+					]
+				},
+				{
+					"name": "Login Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Login Customer berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.user.role).to.eql(\"user\");",
+									"});",
+									"if (res.token) {",
+									"    pm.environment.set(\"accessToken\", res.token);",
+									"    pm.environment.set(\"customerToken\", res.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{customerEmail}}\",\n    \"password\": \"{{customerPassword}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "### Login Customer Demo\n\nLogin menggunakan akun Customer terverifikasi (`customer@raysautocare.com`). Token otomatis disimpan ke `accessToken` untuk menguji checkout pesanan dan profil pelanggan."
+					},
+					"response": [
+						{
+							"name": "200 OK (Customer Logged In)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{customerEmail}}\",\n    \"password\": \"{{customerPassword}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Login berhasil!\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n        \"id\": 7,\n        \"name\": \"Customer Demo\",\n        \"email\": \"customer@raysautocare.com\",\n        \"role\": \"user\",\n        \"phone_number\": \"081234567890\"\n    },\n    \"needsPhone\": false\n}"
+						}
+					]
 				},
 				{
 					"name": "Google Auth",
@@ -196,9 +617,15 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 200 && res.token) {",
-									"    pm.environment.set('accessToken', res.token);",
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});",
+									"if ((pm.response.code === 200 || pm.response.code === 201) && (res.accessToken || res.token)) {",
+									"    pm.environment.set(\"accessToken\", res.accessToken || res.token);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -228,9 +655,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Google OAuth Login / Auto-Register)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idToken\": \"google_id_token_from_frontend\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/google",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"google"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Login Google berhasil!\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTMsImVtYWlsIjoiZmF0dGFoLmFobWFkMDRAZ21haWwuY29tIiwicm9sZSI6InVzZXIifQ...\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTMsImVtYWlsIjoiZmF0dGFoLmFobWFkMDRAZ21haWwuY29tIiwicm9sZSI6InVzZXIifQ...\",\n    \"user\": {\n        \"id\": 13,\n        \"name\": \"Fattah Ahmad\",\n        \"email\": \"fattah.ahmad04@gmail.com\",\n        \"role\": \"user\",\n        \"avatar_url\": \"https://lh3.googleusercontent.com/a/ACg8ocIS8Yg...\",\n        \"phone_number\": null\n    },\n    \"needsPhone\": true\n}"
+						}
+					]
 				}
-			]
+			],
+			"description": "### 1. Authentication\n\nEndpoint manajemen identitas pengguna, registrasi dengan verifikasi email via OTP 6-digit, login password, dan Google OAuth.\n"
 		},
 		{
 			"name": "2. Users & Profile",
@@ -256,7 +721,57 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Current User Profile)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/users/profile",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"users",
+										"profile"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": 7,\n        \"name\": \"Customer Demo\",\n        \"email\": \"customer@raysautocare.com\",\n        \"role\": \"user\",\n        \"phone_number\": \"081234567890\",\n        \"avatar_url\": null,\n        \"is_email_verified\": true,\n        \"created_at\": \"2026-10-13T02:00:00.000Z\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Update Profile & Input Phone",
@@ -287,7 +802,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Profile & Phone Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Fattah Ahmad\",\n    \"phone_number\": \"081234567890\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/users/profile",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"users",
+										"profile"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Profil berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 7,\n        \"name\": \"Fattah Ahmad\",\n        \"phone_number\": \"081298765432\",\n        \"avatar_url\": \"/uploads/avatars/user-avatar.jpg\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "List Users (Admin / Super Admin CMS)",
@@ -309,7 +882,56 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Paginated Users List)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/users",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"users"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 5,\n            \"name\": \"Super Admin\",\n            \"email\": \"superadmin@raysautocare.com\",\n            \"role\": \"super_admin\",\n            \"phone_number\": null,\n            \"is_email_verified\": true,\n            \"created_at\": \"2026-10-01T00:00:00Z\"\n        },\n        {\n            \"id\": 6,\n            \"name\": \"Admin Operasional\",\n            \"email\": \"admin@raysautocare.com\",\n            \"role\": \"admin\",\n            \"phone_number\": null,\n            \"is_email_verified\": true,\n            \"created_at\": \"2026-10-01T00:00:00Z\"\n        },\n        {\n            \"id\": 7,\n            \"name\": \"Customer Demo\",\n            \"email\": \"customer@raysautocare.com\",\n            \"role\": \"user\",\n            \"phone_number\": \"081234567890\",\n            \"is_email_verified\": true,\n            \"created_at\": \"2026-10-13T00:00:00Z\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 3,\n        \"page\": 1,\n        \"limit\": 10,\n        \"totalPages\": 1\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Update User Role (Super Admin Only)",
@@ -341,7 +963,66 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Role Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"role\": \"admin\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/users/{{userId}}/role",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"users",
+										"{{userId}}",
+										"role"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Role pengguna berhasil diubah.\",\n    \"data\": {\n        \"id\": 7,\n        \"email\": \"customer@raysautocare.com\",\n        \"role\": \"admin\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete User (Super Admin Only)",
@@ -364,9 +1045,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (User Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/users/{{userId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"users",
+										"{{userId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Pengguna berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 2. Users & Profile\n\nManajemen akun pengguna aktif, edit profil, ganti password, dan surveillance manajemen pengguna untuk Admin / Super Admin.\n"
 		},
 		{
 			"name": "3. FAQs (Accordion & CMS)",
@@ -386,7 +1118,51 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Public FAQs)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/faqs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"faqs"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"question\": \"Berapa lama proses pengerjaan Nano Ceramic Coating?\",\n            \"answer\": \"Pengerjaan membutuhkan waktu 2-3 hari kerja untuk memastikan curing sempurna.\",\n            \"order_index\": 1\n        },\n        {\n            \"id\": 2,\n            \"question\": \"Apakah ada garansi setelah pengerjaan coating?\",\n            \"answer\": \"Ya, garansi coating kami meliputi maintenance berkala hingga 3 tahun.\",\n            \"order_index\": 2\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Get All FAQs (Admin CMS)",
@@ -409,7 +1185,57 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (All FAQs CMS)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/faqs/all",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"faqs",
+										"all"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"question\": \"Berapa lama proses pengerjaan Nano Ceramic Coating?\",\n            \"answer\": \"...\",\n            \"order_index\": 1,\n            \"is_active\": true\n        },\n        {\n            \"id\": 2,\n            \"question\": \"Apakah ada garansi setelah pengerjaan coating?\",\n            \"answer\": \"...\",\n            \"order_index\": 2,\n            \"is_active\": true\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Create FAQ (Admin)",
@@ -418,10 +1244,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('faqId', res.data.id);",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -453,7 +1282,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (FAQ Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"question\": \"Apakah Rays Autocare menyediakan layanan Home Service ke rumah?\",\n    \"answer\": \"Ya, kami adalah No. 1 Home Service Auto Detailing. Tim kami dapat datang langsung ke garasi rumah atau kantor Anda.\",\n    \"category\": \"layanan\",\n    \"order_index\": 1,\n    \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/faqs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"faqs"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"FAQ berhasil ditambahkan.\",\n    \"data\": {\n        \"id\": 4,\n        \"question\": \"Apakah menerima home service?\",\n        \"answer\": \"Untuk detailing premium wajib dikerjakan di workshop steril Rays.\",\n        \"order_index\": 4\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "Update FAQ (Admin)",
@@ -484,7 +1353,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (FAQ Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"order_index\": 2,\n    \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/faqs/{{faqId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"faqs",
+										"{{faqId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"FAQ berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"question\": \"Berapa lama proses Nano Ceramic Coating?\",\n        \"answer\": \"Estimasi pengerjaan 2 hari kerja.\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete FAQ (Admin)",
@@ -507,9 +1434,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (FAQ Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/faqs/{{faqId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"faqs",
+										"{{faqId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"FAQ berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 3. FAQs (Accordion & CMS)\n\nEndpoint tanya jawab umum landing page untuk menjawab pertanyaan calon pelanggan seputar detailing & marketplace.\n"
 		},
 		{
 			"name": "4. Testimonials (Social Proof & CMS)",
@@ -529,7 +1507,51 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Approved Reviews)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/testimonials",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"testimonials"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"customer_name\": \"Budi Santoso\",\n            \"vehicle_type\": \"Porsche 911 GT3\",\n            \"rating\": 5,\n            \"review_text\": \"Hasil coating luar biasa! Kilap kaca dan swirl mark hilang total.\",\n            \"is_approved\": true,\n            \"created_at\": \"2026-10-10T12:00:00Z\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Submit Testimonial (Customer)",
@@ -555,7 +1577,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Review Submitted for Moderation)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customer_name\": \"Fattah Ahmad\",\n    \"car_type\": \"Honda Civic Turbo\",\n    \"rating\": 5,\n    \"content\": \"Pengerjaan nano coating sangat detail, interior wangi dan jamur kaca hilang total. Sangat recommended!\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/testimonials",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"testimonials"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Ulasan Anda berhasil dikirim dan menunggu persetujuan admin.\",\n    \"data\": {\n        \"id\": 3,\n        \"rating\": 5,\n        \"is_approved\": false\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Get All Testimonials for Moderation (Admin CMS)",
@@ -564,10 +1639,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 200 && res.data && res.data.length > 0) {",
-									"    pm.environment.set('testimonialId', res.data[0].id);",
-									"}"
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -598,7 +1676,46 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Moderation List)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/testimonials/all?status=pending",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"testimonials",
+										"all"
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "pending"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"customer_name\": \"Budi Santoso\",\n            \"rating\": 5,\n            \"is_approved\": true\n        },\n        {\n            \"id\": 2,\n            \"customer_name\": \"Kevin Pratama\",\n            \"rating\": 5,\n            \"is_approved\": false\n        }\n    ]\n}"
+						}
+					]
 				},
 				{
 					"name": "Approve Testimonial (Admin CMS)",
@@ -630,7 +1747,66 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Review Approved)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_approved\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/testimonials/{{testimonialId}}/approve",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"testimonials",
+										"{{testimonialId}}",
+										"approve"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Ulasan pelanggan berhasil disetujui.\",\n    \"data\": {\n        \"id\": 2,\n        \"is_approved\": true\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Testimonial (Admin CMS)",
@@ -653,9 +1829,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Review Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/testimonials/{{testimonialId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"testimonials",
+										"{{testimonialId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Ulasan berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 4. Testimonials (Social Proof & CMS)\n\nUlasan dan rating kepuasan pelanggan dengan alur moderasi admin sebelum tayang di landing page.\n"
 		},
 		{
 			"name": "5. Blogs (WYSIWYG & Image Support)",
@@ -675,7 +1902,51 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Published Articles)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/blogs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"title\": \"Panduan Merawat Lapisan Nano Ceramic Coating\",\n            \"slug\": \"panduan-merawat-lapisan-nano-ceramic-coating\",\n            \"excerpt\": \"Ketahui langkah mencuci mobil coating dengan shampoo pH neutral agar kilap bertahan hingga bertahun-tahun.\",\n            \"image_url\": \"/uploads/blogs/coating-care.jpg\",\n            \"created_at\": \"2026-10-05T08:00:00Z\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"totalPages\": 1\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Get Blog by Slug (Public WYSIWYG)",
@@ -694,7 +1965,53 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Article WYSIWYG Content)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/blogs/detail/tips-merawat-cat-mobil-hitam",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs",
+										"detail",
+										"tips-merawat-cat-mobil-hitam"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Panduan Merawat Lapisan Nano Ceramic Coating\",\n        \"slug\": \"panduan-merawat-lapisan-nano-ceramic-coating\",\n        \"excerpt\": \"Ketahui langkah mencuci mobil...\",\n        \"content\": \"<h2>Mengapa Memilih pH Neutral?</h2><p>Shampoo dengan pH seimbang tidak mengikis lapisan hydrophobic coating...</p>\",\n        \"image_url\": \"/uploads/blogs/coating-care.jpg\",\n        \"author_name\": \"Fattah Ahmad\",\n        \"created_at\": \"2026-10-05T08:00:00Z\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Create Blog with HTML WYSIWYG & Image (Admin CMS)",
@@ -703,11 +2020,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('blogId', res.data.id);",
-									"    pm.environment.set('blogSlug', res.data.slug);",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -739,7 +2058,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Article Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Tips Merawat Cat Mobil Hitam\",\n    \"image_url\": \"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\",\n    \"excerpt\": \"Mobil warna hitam sangat rentan terhadap swirl mark. Simak cara merawatnya agar tetap wet-look.\",\n    \"content\": \"<h2>Kenapa Mobil Hitam Rentan Baret Halus?</h2><p>Warna hitam memantulkan cahaya lebih kontras sehingga baret laba-laba (swirl mark) sangat mudah terlihat.</p><ul><li>Gunakan metode Two-Bucket Wash</li><li>Pakai microfiber ber-GSM tinggi</li><li>Lakukan poles dan nano coating secara berkala</li></ul><img src=\\\"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\\\" alt=\\\"Detailing\\\" />\",\n    \"is_published\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/blogs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Artikel blog berhasil dibuat.\",\n    \"data\": {\n        \"id\": 2,\n        \"title\": \"5 Kesalahan Fatal Saat Mencuci Mobil Sendiri\",\n        \"slug\": \"5-kesalahan-fatal-saat-mencuci-mobil-sendiri\",\n        \"is_published\": true\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "List All Blogs for CMS (Admin CMS)",
@@ -763,7 +2122,58 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (All Blogs CMS)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/blogs/admin/all",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs",
+										"admin",
+										"all"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"title\": \"Panduan Merawat Lapisan Nano Ceramic Coating\",\n            \"is_published\": true\n        },\n        {\n            \"id\": 2,\n            \"title\": \"5 Kesalahan Fatal Saat Mencuci Mobil Sendiri\",\n            \"is_published\": false\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Update Blog (Admin CMS)",
@@ -794,7 +2204,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Article Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Tips Merawat Cat Mobil Hitam (Updated 2026)\",\n    \"is_published\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/blogs/{{blogId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs",
+										"{{blogId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Artikel berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"is_published\": true\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Blog (Admin CMS)",
@@ -817,9 +2285,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Article Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/blogs/{{blogId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"blogs",
+										"{{blogId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Artikel berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 5. Blogs (WYSIWYG & Image Support)\n\nPusat edukasi perawatan mobil, tips coating, dan artikel SEO untuk meningkatkan traffic web Rays Autocare.\n"
 		},
 		{
 			"name": "6. Product Categories (Marketplace)",
@@ -839,7 +2358,51 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Categories with Count)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/categories",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"categories"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"Car Wash & Shampoo\",\n            \"slug\": \"car-wash-shampoo\",\n            \"product_count\": 3\n        },\n        {\n            \"id\": 2,\n            \"name\": \"Paint Protection & Coating\",\n            \"slug\": \"paint-protection-coating\",\n            \"product_count\": 2\n        },\n        {\n            \"id\": 3,\n            \"name\": \"Interior Detailing\",\n            \"slug\": \"interior-detailing\",\n            \"product_count\": 4\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Create Category (Admin CMS)",
@@ -848,10 +2411,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('categoryId', res.data.id);",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -883,7 +2449,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Category Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Perawatan Eksterior\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/categories",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"categories"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kategori berhasil ditambahkan.\",\n    \"data\": {\n        \"id\": 5,\n        \"name\": \"Glass & Windshield Care\",\n        \"slug\": \"glass-windshield-care\"\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "Update Category (Admin CMS)",
@@ -914,7 +2520,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Category Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Exterior Detailing & Wash\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/categories/{{categoryId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"categories",
+										"{{categoryId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kategori berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"Premium Car Wash & Shampoo\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Category (Admin CMS)",
@@ -937,9 +2601,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Category Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/categories/{{categoryId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"categories",
+										"{{categoryId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kategori berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 6. Product Categories (Marketplace)\n\nPengelompokan kategori produk toko online Rays Autocare (misal: Shampoo, Microfiber, Coating Kit, Interior).\n"
 		},
 		{
 			"name": "7. Products & Gallery (Marketplace)",
@@ -973,7 +2688,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Products Catalog)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/products?page=1&limit=12&sort=newest",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "12"
+										},
+										{
+											"key": "sort",
+											"value": "newest"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"Rays Ultra Foam pH-Neutral Shampoo (1 Liter)\",\n            \"slug\": \"rays-ultra-foam-ph-neutral-shampoo-1-liter\",\n            \"price\": 135000,\n            \"stock\": 45,\n            \"primary_image\": \"/uploads/products/shampoo-foam-primary.jpg\",\n            \"category_name\": \"Car Wash & Shampoo\"\n        },\n        {\n            \"id\": 2,\n            \"name\": \"Rays Graphene Spray Coating 250ml\",\n            \"slug\": \"rays-graphene-spray-coating-250ml\",\n            \"price\": 250000,\n            \"stock\": 20,\n            \"primary_image\": \"/uploads/products/graphene-spray.jpg\",\n            \"category_name\": \"Paint Protection & Coating\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 4,\n        \"page\": 1,\n        \"limit\": 12,\n        \"totalPages\": 1\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Get Product by Slug (Public Detail & Gallery)",
@@ -991,7 +2764,52 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Product Detail & Multi-Image Gallery)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/products/rays-premium-shampoo-ph-balance-500ml",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"rays-premium-shampoo-ph-balance-500ml"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"Rays Ultra Foam pH-Neutral Shampoo (1 Liter)\",\n        \"slug\": \"rays-ultra-foam-ph-neutral-shampoo-1-liter\",\n        \"description\": \"Shampoo salju dengan busa melimpah dan formula pH netral, aman untuk mobil yang telah dicoating.\",\n        \"price\": 135000,\n        \"stock\": 45,\n        \"weight_grams\": 1100,\n        \"category_name\": \"Car Wash & Shampoo\",\n        \"gallery\": [\n            {\n                \"id\": 101,\n                \"image_url\": \"/uploads/products/shampoo-1.jpg\",\n                \"is_primary\": true\n            },\n            {\n                \"id\": 102,\n                \"image_url\": \"/uploads/products/shampoo-foam-action.jpg\",\n                \"is_primary\": false\n            }\n        ]\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Create Product with Images (Admin CMS)",
@@ -1000,14 +2818,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('productId', res.data.id);",
-									"    pm.environment.set('productSlug', res.data.slug);",
-									"    if (res.data.images && res.data.images.length > 0) {",
-									"        pm.environment.set('productImageId', res.data.images[0].id);",
-									"    }",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -1039,7 +2856,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Product Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"category_id\": {{categoryId}},\n    \"name\": \"Rays Premium Shampoo pH Balance 500ml\",\n    \"description\": \"Shampoo mobil formula busa melimpah dengan pH balance netral, aman untuk mobil yang telah di-coating atau wax.\",\n    \"price\": 85000,\n    \"weight_grams\": 600,\n    \"stock\": 50,\n    \"is_active\": true,\n    \"images\": [\n        {\n            \"image_url\": \"https://images.unsplash.com/photo-1520340356584-f9917d1eea6f\",\n            \"is_primary\": true\n        },\n        {\n            \"image_url\": \"https://images.unsplash.com/photo-1607860108855-64acf2078ed9\",\n            \"is_primary\": false\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/products",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Produk berhasil ditambahkan.\",\n    \"data\": {\n        \"id\": 5,\n        \"name\": \"Rays Tire Gel Wet Look 500ml\",\n        \"slug\": \"rays-tire-gel-wet-look-500ml\",\n        \"price\": 95000,\n        \"stock\": 50\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "Update Product (Admin CMS)",
@@ -1070,7 +2927,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Product Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"price\": 79000,\n    \"stock\": 45\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/products/{{productId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"{{productId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Produk berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"price\": 135000,\n        \"stock\": 45\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Add Image to Gallery (Admin CMS)",
@@ -1102,7 +3017,66 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Gallery Image Added)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"image_url\": \"https://images.unsplash.com/photo-1552519507-da3b142c6e3d\",\n    \"is_primary\": false\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/products/{{productId}}/images",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"{{productId}}",
+										"images"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Foto berhasil ditambahkan ke galeri produk.\",\n    \"data\": {\n        \"id\": 103,\n        \"product_id\": 1,\n        \"image_url\": \"/uploads/products/gallery-angle.jpg\",\n        \"is_primary\": false\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Set Image as Primary (Admin CMS)",
@@ -1128,7 +3102,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Primary Image Set)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products/{{productId}}/images/{{productImageId}}/primary",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"{{productId}}",
+										"images",
+										"{{productImageId}}",
+										"primary"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Foto utama produk berhasil diubah.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Product Image (Admin CMS)",
@@ -1152,7 +3179,58 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Gallery Image Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products/images/{{productImageId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"images",
+										"{{productImageId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Foto galeri berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Product (Admin CMS Soft Delete)",
@@ -1175,9 +3253,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Product Soft Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products/{{productId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										"{{productId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Produk berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 7. Products & Gallery (Marketplace)\n\nKatalog barang, detail spesifikasi, berat dalam gram untuk ongkir kurir JNE, manajemen stok, dan galeri multi-foto.\n"
 		},
 		{
 			"name": "8. Coupons & Weekday Discounts (Marketplace)",
@@ -1207,7 +3336,98 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Coupon Applied Valid)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"code\": \"WEEKDAYGLOW\",\n    \"subtotal\": 150000\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/coupons/validate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons",
+										"validate"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kupon berhasil digunakan! Anda mendapatkan potongan harga.\",\n    \"data\": {\n        \"coupon_code\": \"WEDNESDAY10\",\n        \"discount_type\": \"percentage\",\n        \"discount_value\": 10,\n        \"discount_amount\": 38500,\n        \"total_after_discount\": 346500\n    }\n}"
+						},
+						{
+							"name": "400 Bad Request (Coupon Invalid / Min Purchase Not Met)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"code\": \"WEEKDAYGLOW\",\n    \"subtotal\": 150000\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/coupons/validate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons",
+										"validate"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"message\": \"Kupon ini hanya berlaku untuk hari Rabu.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Kupon tervalidasi dengan diskon terhitung\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"discount_amount\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "List Coupons (Admin CMS)",
@@ -1229,7 +3449,56 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (All Coupons List)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/coupons",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"code\": \"WEDNESDAY10\",\n            \"discount_type\": \"percentage\",\n            \"discount_value\": 10,\n            \"valid_day_of_week\": 3,\n            \"is_active\": true\n        },\n        {\n            \"id\": 2,\n            \"code\": \"DISKONHEMAT25K\",\n            \"discount_type\": \"fixed\",\n            \"discount_value\": 25000,\n            \"valid_day_of_week\": null,\n            \"is_active\": true\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Create Weekday Coupon (Admin CMS)",
@@ -1238,10 +3507,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
 									"const res = pm.response.json();",
-									"if (pm.response.code === 201 && res.data) {",
-									"    pm.environment.set('couponId', res.data.id);",
-									"}"
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -1273,7 +3545,47 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Coupon Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"code\": \"WEEKDAYGLOW\",\n    \"discount_type\": \"percentage\",\n    \"discount_value\": 15,\n    \"min_purchase\": 100000,\n    \"valid_days\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"],\n    \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/coupons",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kupon diskon berhasil dibuat.\",\n    \"data\": {\n        \"id\": 3,\n        \"code\": \"FRIDAYGLOW\",\n        \"discount_type\": \"percentage\",\n        \"discount_value\": 15,\n        \"valid_day_of_week\": 5\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "Update Coupon (Admin CMS)",
@@ -1304,7 +3616,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Coupon Updated)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discount_value\": 20,\n    \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/coupons/{{couponId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons",
+										"{{couponId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kupon berhasil diperbarui.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi update berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Delete Coupon (Admin CMS)",
@@ -1327,9 +3697,60 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Coupon Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/coupons/{{couponId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"coupons",
+										"{{couponId}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Kupon berhasil dihapus.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi penghapusan berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 8. Coupons & Weekday Discounts (Marketplace)\n\nSistem kode voucher diskon dengan batas minimal belanja dan filter pembatasan hari tertentu (Promo Khusus Hari Tertentu).\n"
 		},
 		{
 			"name": "9. Audit Logs (Super Admin Surveillance)",
@@ -1364,7 +3785,66 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Audit Surveillance Trail)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/audit-logs?page=1&limit=20",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"audit-logs"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 42,\n            \"user_id\": 6,\n            \"user_name\": \"Admin Operasional\",\n            \"action\": \"ADMIN_CREATE_BANNER\",\n            \"entity_type\": \"banner\",\n            \"entity_id\": 4,\n            \"description\": \"Admin menambahkan banner promosi baru: \\\"FLASH SALE\\\"\",\n            \"ip_address\": \"192.168.1.34\",\n            \"created_at\": \"2026-10-26T11:00:00Z\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 42,\n        \"page\": 1,\n        \"limit\": 20,\n        \"totalPages\": 3\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Filter Audit Logs by Action",
@@ -1392,7 +3872,62 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Filtered by Action)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/audit-logs?action=ADMIN_LOGIN",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"audit-logs"
+									],
+									"query": [
+										{
+											"key": "action",
+											"value": "ADMIN_LOGIN"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 40,\n            \"action\": \"ADMIN_LOGIN\",\n            \"description\": \"Admin Operasional berhasil login ke sistem\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Filter Audit Logs by Entity Type",
@@ -1420,7 +3955,62 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Filtered by Entity)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/audit-logs?entity_type=product",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"audit-logs"
+									],
+									"query": [
+										{
+											"key": "entity_type",
+											"value": "product"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 38,\n            \"entity_type\": \"product\",\n            \"description\": \"Admin memperbarui harga produk\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Search Audit Logs Keyword",
@@ -1448,9 +4038,65 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Search Audit Results)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/audit-logs?search=harga",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"audit-logs"
+									],
+									"query": [
+										{
+											"key": "search",
+											"value": "harga"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 42,\n            \"description\": \"Admin menambahkan banner promosi baru: \\\"FLASH SALE\\\"\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 9. Audit Logs (Super Admin Surveillance)\n\nPencatatan otomatis seluruh mutasi data dan aktivitas login Admin / Super Admin dengan sanitasi data sensitif otomatis.\n"
 		},
 		{
 			"name": "10. Media Uploads (Local Storage)",
@@ -1491,9 +4137,128 @@
 									"description": "Pilihan: products, blogs, avatars, general"
 								}
 							]
-						}
+						},
+						"description": "### Upload Single Image\n\n**Metode:** `POST`  \n**Path:** `/upload/single`  \n**Otentikasi:** `Bearer (User)`  \n\nFile otomatis disimpan ke folder lokal server Hostinger (`uploads/products`, `uploads/blogs`, `uploads/avatars`, atau `uploads/general`). Mengembalikan URL publik relatif siap pakai.\n\n#### Query Parameters\n\n| Parameter | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `folder` | `string` | Tidak | Pilihan folder: products, blogs, avatars, general (default: general) |\n\n"
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "image",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/upload/single?folder=products",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"upload",
+										"single"
+									],
+									"query": [
+										{
+											"key": "folder",
+											"value": "products",
+											"description": "Pilihan: products, blogs, avatars, general"
+										}
+									]
+								},
+								"description": "### Upload Single Image\n\n**Metode:** `POST`  \n**Path:** `/upload/single`  \n**Otentikasi:** `Bearer (User)`  \n\nFile otomatis disimpan ke folder lokal server Hostinger (`uploads/products`, `uploads/blogs`, `uploads/avatars`, atau `uploads/general`). Mengembalikan URL publik relatif siap pakai.\n\n#### Query Parameters\n\n| Parameter | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `folder` | `string` | Tidak | Pilihan folder: products, blogs, avatars, general (default: general) |\n\n"
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"File berhasil diunggah.\",\n    \"data\": {\n        \"filename\": \"products-1790130000000-847291024.jpg\",\n        \"original_name\": \"shampoo_front.jpg\",\n        \"folder\": \"products\",\n        \"path\": \"uploads/products/products-1790130000000-847291024.jpg\",\n        \"url\": \"/uploads/products/products-1790130000000-847291024.jpg\",\n        \"size\": 421890,\n        \"mimetype\": \"image/jpeg\"\n    }\n}"
+						},
+						{
+							"name": "400 Bad Request",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "image",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/upload/single?folder=products",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"upload",
+										"single"
+									],
+									"query": [
+										{
+											"key": "folder",
+											"value": "products",
+											"description": "Pilihan: products, blogs, avatars, general"
+										}
+									]
+								},
+								"description": "### Upload Single Image\n\n**Metode:** `POST`  \n**Path:** `/upload/single`  \n**Otentikasi:** `Bearer (User)`  \n\nFile otomatis disimpan ke folder lokal server Hostinger (`uploads/products`, `uploads/blogs`, `uploads/avatars`, atau `uploads/general`). Mengembalikan URL publik relatif siap pakai.\n\n#### Query Parameters\n\n| Parameter | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `folder` | `string` | Tidak | Pilihan folder: products, blogs, avatars, general (default: general) |\n\n"
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"message\": \"Hanya file gambar (.jpg, .jpeg, .png, .webp) yang diperbolehkan!\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Upload Multiple Images (Max 5)",
@@ -1530,11 +4295,80 @@
 									"value": "products"
 								}
 							]
-						}
+						},
+						"description": "### Upload Multiple Images (Max 5)\n\n**Metode:** `POST`  \n**Path:** `/upload/multiple`  \n**Otentikasi:** `Bearer (User)`  \n\nSangat cocok untuk pengunggahan galeri foto produk atau foto before-after pengerjaan.\n\n#### Query Parameters\n\n| Parameter | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `folder` | `string` | Tidak | Pilihan folder: products, blogs, avatars, general |\n\n"
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "images",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/upload/multiple?folder=products",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"upload",
+										"multiple"
+									],
+									"query": [
+										{
+											"key": "folder",
+											"value": "products"
+										}
+									]
+								},
+								"description": "### Upload Multiple Images (Max 5)\n\n**Metode:** `POST`  \n**Path:** `/upload/multiple`  \n**Otentikasi:** `Bearer (User)`  \n\nSangat cocok untuk pengunggahan galeri foto produk atau foto before-after pengerjaan.\n\n#### Query Parameters\n\n| Parameter | Tipe | Wajib | Deskripsi |\n| :--- | :--- | :--- | :--- |\n| `folder` | `string` | Tidak | Pilihan folder: products, blogs, avatars, general |\n\n"
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"2 file berhasil diunggah.\",\n    \"data\": [\n        {\n            \"filename\": \"products-1790130001000-112233445.jpg\",\n            \"url\": \"/uploads/products/products-1790130001000-112233445.jpg\",\n            \"size\": 312000\n        },\n        {\n            \"filename\": \"products-1790130002000-998877665.jpg\",\n            \"url\": \"/uploads/products/products-1790130002000-998877665.jpg\",\n            \"size\": 284000\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 atau 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Operasi POST berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 10. Media Uploads (Local Hostinger Storage)\n\nSistem penyimpanan media gambar lokal di server tanpa ketergantungan cloud pihak ketiga, hemat biaya dan terintegrasi langsung.\n"
 		},
 		{
 			"name": "11. Orders & Checkout (Marketplace)",
@@ -1546,10 +4380,17 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
 									"const res = pm.response.json();",
+									"pm.test(\"Checkout berhasil dan order number terbit\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data.order).to.have.property(\"order_number\");",
+									"});",
 									"if (res.success && res.data && res.data.order) {",
-									"    pm.environment.set('orderId', res.data.order.id);",
-									"    pm.environment.set('orderNumber', res.data.order.order_number);",
+									"    pm.environment.set(\"orderId\", res.data.order.id);",
+									"    pm.environment.set(\"orderNumber\", res.data.order.order_number);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -1583,7 +4424,48 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "201 Created (Order Placed Successfully)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 2\n        }\n    ],\n    \"shipping_address\": \"Jl. Sudirman No. 45, Jakarta Pusat, DKI Jakarta 10220\",\n    \"courier\": \"JNE\",\n    \"courier_service\": \"REG\",\n    \"shipping_cost\": 20000,\n    \"coupon_code\": \"WEDNESDAY10\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/orders/checkout",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"checkout"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Pesanan berhasil dibuat!\",\n    \"data\": {\n        \"id\": 10,\n        \"order_number\": \"ORD-20261026-7A9B\",\n        \"total_amount\": 385000,\n        \"status\": \"pending\",\n        \"shipping_address\": \"Jl. Boulevard Bintaro Sektor 7 No. 12, Tangerang Selatan\",\n        \"items\": [\n            {\n                \"product_name\": \"Rays Ultra Foam pH-Neutral Shampoo (1 Liter)\",\n                \"quantity\": 1,\n                \"price\": 135000\n            },\n            {\n                \"product_name\": \"Rays Graphene Spray Coating 250ml\",\n                \"quantity\": 1,\n                \"price\": 250000\n            }\n        ]\n    }\n}"
+						}
+					]
 				},
 				{
 					"name": "Get My Orders (Customer History)",
@@ -1616,7 +4498,67 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Customer Purchase History)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/orders/my-orders?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"my-orders"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 10,\n            \"order_number\": \"ORD-20261026-7A9B\",\n            \"total_amount\": 385000,\n            \"status\": \"shipped\",\n            \"shipping_courier\": \"JNE\",\n            \"shipping_tracking_number\": \"JNE1234567890\",\n            \"created_at\": \"2026-10-26T09:00:00Z\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Get Order Detail by Order Number",
@@ -1639,7 +4581,57 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Complete Invoice & Tracking Info)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/orders/{{orderNumber}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"{{orderNumber}}"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": 10,\n        \"order_number\": \"ORD-20261026-7A9B\",\n        \"customer_name\": \"Fattah Ahmad\",\n        \"customer_email\": \"fattah.ahmad04@gmail.com\",\n        \"customer_phone\": \"081234567890\",\n        \"total_amount\": 385000,\n        \"status\": \"shipped\",\n        \"shipping_courier\": \"JNE Reguler\",\n        \"shipping_tracking_number\": \"JNE1234567890\",\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"product_name\": \"Rays Ultra Foam pH-Neutral Shampoo\",\n                \"quantity\": 1,\n                \"price\": 135000\n            }\n        ]\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Admin: List All Orders (CMS)",
@@ -1677,7 +4669,72 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Orders CMS)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/orders/admin/all?page=1&limit=20&status=pending_payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"admin",
+										"all"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "status",
+											"value": "pending_payment"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 10,\n            \"order_number\": \"ORD-20261026-7A9B\",\n            \"customer_name\": \"Fattah Ahmad\",\n            \"total_amount\": 385000,\n            \"status\": \"shipped\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"totalPages\": 1\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Response success bernilai true\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Admin: Update Shipping Resi & Mark Shipped",
@@ -1710,7 +4767,68 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Resi Saved & Status Changed to Shipped)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"tracking_number\": \"JNE-SOC-20260923001\",\n    \"courier\": \"JNE\",\n    \"courier_service\": \"REG\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/orders/admin/{{orderId}}/shipping",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"admin",
+										"{{orderId}}",
+										"shipping"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Nomor resi berhasil diinput dan status diubah ke Shipped.\",\n    \"data\": {\n        \"order_id\": 10,\n        \"status\": \"shipped\",\n        \"shipping_courier\": \"JNE\",\n        \"shipping_tracking_number\": \"JNE1234567890\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Nomor resi tersimpan dan status menjadi shipped\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data.status).to.eql(\"shipped\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Admin: Update Order Status (With Auto-Restock on Canceled)",
@@ -1743,9 +4861,1475 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK (Status Updated & Stock Auto-Adjusted)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"canceled\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/orders/admin/{{orderId}}/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"admin",
+										"{{orderId}}",
+										"status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Status pesanan berhasil diperbarui.\",\n    \"data\": {\n        \"order_id\": 10,\n        \"status\": \"completed\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Status pesanan berhasil diperbarui\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
-			]
+			],
+			"description": "### 11. Orders & Checkout (Marketplace)\n\nSiklus lengkap transaksi marketplace: checkout, penguncian harga, diskon kupon, pelacakan nomor resi pengiriman, hingga pembatalan pesanan dengan auto-restock.\n"
+		},
+		{
+			"name": "12. Google Analytics (CMS Dashboard)",
+			"item": [
+				{
+					"name": "Get Realtime Active Users (30 Min)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/analytics/realtime",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"analytics",
+								"realtime"
+							]
+						},
+						"description": "### Realtime Active Users\n\nMengambil jumlah pengunjung yang aktif dalam 30 menit terakhir serta rincian kota dan negara asal pengunjung untuk widget live pada CMS Admin."
+					},
+					"response": [
+						{
+							"name": "200 OK (Active Users Realtime Telemetry)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/analytics/realtime",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"analytics",
+										"realtime"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"activeUsers30Min\": 18,\n        \"countries\": [\n            {\n                \"country\": \"Indonesia\",\n                \"activeUsers\": 17\n            },\n            {\n                \"country\": \"Singapore\",\n                \"activeUsers\": 1\n            }\n        ],\n        \"cities\": [\n            {\n                \"city\": \"South Tangerang\",\n                \"activeUsers\": 8\n            },\n            {\n                \"city\": \"Jakarta\",\n                \"activeUsers\": 7\n            },\n            {\n                \"city\": \"Bandung\",\n                \"activeUsers\": 3\n            }\n        ],\n        \"is_mock\": false\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Data analitik realtime berhasil diambil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"activeUsers30Min\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Overview & Trend Chart",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/analytics/overview?days=7",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"analytics",
+								"overview"
+							],
+							"query": [
+								{
+									"key": "days",
+									"value": "7",
+									"description": "Rentang hari analisis (default: 7, bisa 14, 30, dll)"
+								}
+							]
+						},
+						"description": "### Analytics Overview & Trend Chart\n\nMengambil data deret waktu harian untuk grafik tren kunjungan (tanggal vs pengunjung), ringkasan metrik total pengunjung, top 5 halaman paling banyak dilihat, top kota, dan sumber trafik."
+					},
+					"response": [
+						{
+							"name": "200 OK (Trend Chart & Daily Metrics)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/analytics/overview?days=7",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"analytics",
+										"overview"
+									],
+									"query": [
+										{
+											"key": "days",
+											"value": "7",
+											"description": "Rentang hari analisis (default: 7, bisa 14, 30, dll)"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"summary\": {\n            \"totalUsers\": 1420,\n            \"pageViews\": 4850,\n            \"avgDurationSec\": 185,\n            \"bounceRatePercent\": 28.4\n        },\n        \"chart\": [\n            {\n                \"date\": \"20261020\",\n                \"formattedDate\": \"20 Okt\",\n                \"activeUsers\": 180,\n                \"pageViews\": 620\n            },\n            {\n                \"date\": \"20261021\",\n                \"formattedDate\": \"21 Okt\",\n                \"activeUsers\": 210,\n                \"pageViews\": 710\n            },\n            {\n                \"date\": \"20261022\",\n                \"formattedDate\": \"22 Okt\",\n                \"activeUsers\": 245,\n                \"pageViews\": 830\n            }\n        ],\n        \"topPages\": [\n            {\n                \"pagePath\": \"/\",\n                \"pageTitle\": \"Rays Autocare - Home\",\n                \"views\": 2100\n            },\n            {\n                \"pagePath\": \"/services\",\n                \"pageTitle\": \"Layanan Detailing & Kalkulator\",\n                \"views\": 1420\n            }\n        ],\n        \"is_mock\": false\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Data ringkasan dan grafik analitik berhasil diambil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"chart\");",
+									"    pm.expect(res.data.chart).to.be.an(\"array\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Track Meta Event (CAPI Proxy)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"eventName\": \"Lead\",\n    \"eventSourceUrl\": \"https://raysautocare.com/booking-detailing\",\n    \"userData\": {\n        \"email\": \"customer@example.com\",\n        \"phone\": \"08123456789\"\n    },\n    \"customData\": {\n        \"content_name\": \"Paket Nano Ceramic Coating WhatsApp Click\",\n        \"value\": 2500000,\n        \"currency\": \"IDR\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/analytics/meta-event",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"analytics",
+								"meta-event"
+							]
+						},
+						"description": "### Track Meta Event (Conversions API Proxy)\n\n**Metode:** `POST`  \n**Path:** `/analytics/meta-event`  \n**Otentikasi:** `None (Public / Client Proxy)`  \n\nDigunakan oleh Frontend untuk meneruskan event interaksi pengunjung (seperti klik tombol WhatsApp Booking, ViewContent, AddToCart) secara aman ke server Meta Conversions API (CAPI) tanpa mengekspos Meta System User Token di browser."
+					},
+					"response": [
+						{
+							"name": "200 OK (Event Dispatched to Meta Conversions API)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventName\": \"Lead\",\n    \"eventSourceUrl\": \"https://raysautocare.com/booking-detailing\",\n    \"userData\": {\n        \"email\": \"customer@example.com\",\n        \"phone\": \"08123456789\"\n    },\n    \"customData\": {\n        \"content_name\": \"Paket Nano Ceramic Coating WhatsApp Click\",\n        \"value\": 2500000,\n        \"currency\": \"IDR\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/analytics/meta-event",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"analytics",
+										"meta-event"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Event Lead berhasil diteruskan ke Meta Conversions API.\",\n    \"eventId\": \"calc-lead-1792988123\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Event Meta CAPI berhasil diproses\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"description": "### 12. Google Analytics & Meta Tracking (CMS Dashboard)\n\nIntegrasi Google Analytics Data API untuk metrik pengunjung (durasi, kota, trafik, tren) serta Meta Conversions API (CAPI) untuk melacak konversi pembelian & prospek WhatsApp secara server-side.\n"
+		},
+		{
+			"name": "13. Real-Time Web Live Chat",
+			"item": [
+				{
+					"name": "Start Chat Session (Customer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"guest_name\": \"Budi Santoso\",\n    \"phone_number\": \"081234567890\",\n    \"guest_email\": \"budi@example.com\",\n    \"initial_message\": \"Halo admin Rays, apakah ada slot pengerjaan coating untuk Honda HR-V besok?\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/chat/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"chat",
+								"start"
+							]
+						},
+						"description": "### Start Chat Session\n\n**Metode:** `POST`  \n**Path:** `/chat/start`  \n**Otentikasi:** `None (Public / Customer)`  \n\nMembuat sesi percakapan obrolan baru saat pengunjung membuka widget live chat di website. Mengembalikan ID percakapan yang dapat digunakan untuk bergabung ke room Socket.io."
+					},
+					"response": [
+						{
+							"name": "201 Created (Live Chat Session Initialized)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"guest_name\": \"Budi Santoso\",\n    \"phone_number\": \"081234567890\",\n    \"guest_email\": \"budi@example.com\",\n    \"initial_message\": \"Halo admin Rays, apakah ada slot pengerjaan coating untuk Honda HR-V besok?\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/chat/start",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"chat",
+										"start"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Sesi konsultasi live chat dimulai.\",\n    \"data\": {\n        \"conversation_id\": 1,\n        \"token\": \"chat-guest-token-abc123xyz\",\n        \"guest_name\": \"Budi (Porsche Cayman)\",\n        \"phone_number\": \"081234567890\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Sesi obrolan berhasil dibuat\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"conversation\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Conversation Messages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/chat/conversations/1/messages",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"chat",
+								"conversations",
+								"1",
+								"messages"
+							]
+						},
+						"description": "### Get Conversation Messages\n\n**Metode:** `GET`  \n**Path:** `/chat/conversations/:id/messages`  \n**Otentikasi:** `None (Public / Customer / Admin)`  \n\nMengambil seluruh riwayat pesan obrolan untuk sesi percakapan tertentu secara kronologis."
+					},
+					"response": [
+						{
+							"name": "200 OK (Chat Message History)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/chat/conversations/1/messages",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"chat",
+										"conversations",
+										"1",
+										"messages"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"sender\": \"guest\",\n            \"message\": \"Halo admin, apakah slot besok untuk nano coating masih tersedia?\",\n            \"created_at\": \"2026-10-26T10:00:00Z\"\n        },\n        {\n            \"id\": 2,\n            \"sender\": \"admin\",\n            \"message\": \"Halo Pak Budi! Slot besok jam 10.00 masih tersedia 1 mobil.\",\n            \"created_at\": \"2026-10-26T10:02:00Z\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Riwayat pesan berhasil diambil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"messages\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Send Message (HTTP Fallback)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message_text\": \"Untuk estimasi pengerjaannya berapa lama ya min?\",\n    \"sender_type\": \"customer\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/chat/conversations/1/messages",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"chat",
+								"conversations",
+								"1",
+								"messages"
+							]
+						},
+						"description": "### Send Message (HTTP Fallback)\n\n**Metode:** `POST`  \n**Path:** `/chat/conversations/:id/messages`  \n**Otentikasi:** `None (Public / Customer / Admin)`  \n\nMengirimkan pesan baru via HTTP jika websocket client sedang offline/reconnecting. Pesan otomatis dipancarkan via Socket.io ke room aktif."
+					},
+					"response": [
+						{
+							"name": "201 Created (Message Sent)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"message_text\": \"Untuk estimasi pengerjaannya berapa lama ya min?\",\n    \"sender_type\": \"customer\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/chat/conversations/1/messages",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"chat",
+										"conversations",
+										"1",
+										"messages"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Pesan berhasil terkirim.\",\n    \"data\": {\n        \"id\": 3,\n        \"conversation_id\": 1,\n        \"sender\": \"guest\",\n        \"message\": \"Baik, tolong di-lock ya min jam 10.00.\",\n        \"created_at\": \"2026-10-26T10:03:00Z\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Pesan berhasil dikirim\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "List Conversations (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/chat/admin/conversations?status=all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"chat",
+								"admin",
+								"conversations"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Filter status: all, open, resolved"
+								}
+							]
+						},
+						"description": "### List Admin Conversations (Inbox CS)\n\n**Metode:** `GET`  \n**Path:** `/chat/admin/conversations`  \n**Otentikasi:** `Bearer Token (Admin / Super Admin)`  \n\nMengambil daftar seluruh sesi percakapan masuk untuk tampilan menu Live Chat Support di Admin CMS Rays Autocare."
+					},
+					"response": [
+						{
+							"name": "200 OK (Admin Active Chat Inquiries)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/chat/admin/conversations?status=all",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"chat",
+										"admin",
+										"conversations"
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "all",
+											"description": "Filter status: all, open, resolved"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"guest_name\": \"Budi (Porsche Cayman)\",\n            \"phone_number\": \"081234567890\",\n            \"status\": \"open\",\n            \"unread_count\": 1,\n            \"last_message\": \"Baik, tolong di-lock ya min jam 10.00.\",\n            \"updated_at\": \"2026-10-26T10:03:00Z\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Daftar percakapan admin berhasil diambil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.be.an(\"array\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Conversation Status (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"resolved\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/chat/admin/conversations/1/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"chat",
+								"admin",
+								"conversations",
+								"1",
+								"status"
+							]
+						},
+						"description": "### Update Conversation Status\n\n**Metode:** `PATCH`  \n**Path:** `/chat/admin/conversations/:id/status`  \n**Otentikasi:** `Bearer Token (Admin / Super Admin)`  \n\nMenandai status percakapan sebagai `resolved` (Selesai ditangani) atau `open`."
+					},
+					"response": [
+						{
+							"name": "200 OK (Chat Status Closed/Archived)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"resolved\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/chat/admin/conversations/1/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"chat",
+										"admin",
+										"conversations",
+										"1",
+										"status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Status percakapan berhasil diubah menjadi closed.\"\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Status percakapan berhasil diperbarui\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"description": "### 13. Real-Time Web Live Chat (Socket.io & REST)\n\nSistem obrolan langsung (Live Chat) mandiri antara pengunjung website dengan tim Customer Support di Admin CMS Rays Autocare berbasis WebSocket (Socket.io) dan REST API fallback.\n"
+		},
+		{
+			"name": "14. Business Settings & WhatsApp Config",
+			"item": [
+				{
+					"name": "Get Public Settings (Floating WA & Contact)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings"
+							]
+						},
+						"description": "### Get Public Business Settings\n\n**Metode:** `GET`  \n**Path:** `/settings`  \n**Otentikasi:** `None (Public)`  \n\nMengambil nomor WhatsApp resmi untuk floating button, alamat bengkel, jam operasional, dan link media sosial untuk landing page."
+					},
+					"response": [
+						{
+							"name": "200 OK (Public Workshop Contacts)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/settings",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"settings"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"whatsapp_number\": \"6281234567890\",\n        \"workshop_address\": \"Jl. Boulevard Sektor 7 No. 18, Bintaro, Tangerang Selatan\",\n        \"company_email\": \"info@raysautocare.com\",\n        \"operational_hours\": \"Senin - Minggu: 08.00 - 18.00 WIB\",\n        \"instagram_url\": \"https://instagram.com/raysautocare\",\n        \"tiktok_url\": \"https://tiktok.com/@raysautocare\",\n        \"google_maps_url\": \"https://maps.google.com/?q=Rays+Autocare+Bintaro\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Nomor WhatsApp dan pengaturan publik tersedia\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property(\"whatsapp_number\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Settings (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/settings/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings",
+								"admin"
+							]
+						},
+						"description": "### Get All Settings (Admin CMS)\n\n**Metode:** `GET`  \n**Path:** `/settings/admin`  \n**Otentikasi:** `Bearer Token (Admin / Super Admin)`  \n\nMengambil seluruh konfigurasi bisnis lengkap dengan kategori dan deskripsi untuk formulir pengaturan di Admin CMS."
+					},
+					"response": [
+						{
+							"name": "200 OK (All Settings Map for CMS Form)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/settings/admin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"settings",
+										"admin"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"key\": \"whatsapp_number\",\n            \"value\": \"6281234567890\",\n            \"category\": \"contact\",\n            \"description\": \"Nomor WhatsApp resmi untuk floating button\"\n        },\n        {\n            \"key\": \"workshop_address\",\n            \"value\": \"Jl. Boulevard Sektor 7 No. 18, Bintaro\",\n            \"category\": \"general\",\n            \"description\": \"Alamat fisik bengkel\"\n        },\n        {\n            \"key\": \"operational_hours\",\n            \"value\": \"08.00 - 18.00 WIB\",\n            \"category\": \"general\",\n            \"description\": \"Jam buka workshop\"\n        }\n    ]\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Daftar pengaturan admin berhasil diambil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.be.an(\"array\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Business Settings (Admin CMS)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"whatsapp_number\": \"6281299998888\",\n    \"workshop_address\": \"Jl. Boulevard Sektor 7 No. 18, Bintaro, Tangerang Selatan\",\n    \"operational_hours\": \"Setiap Hari: 08.00 - 18.00 WIB\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/settings/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings",
+								"admin"
+							]
+						},
+						"description": "### Update Business Settings & WhatsApp Number\n\n**Metode:** `PUT`  \n**Path:** `/settings/admin`  \n**Otentikasi:** `Bearer Token (Admin / Super Admin)`  \n\nMemperbarui nomor WhatsApp floating button dan informasi kontak bengkel secara dinamis langsung dari dashboard Admin CMS tanpa perlu mengedit file .env."
+					},
+					"response": [
+						{
+							"name": "200 OK (Settings Updated Successfully)",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"whatsapp_number\": \"6281299998888\",\n    \"workshop_address\": \"Jl. Boulevard Sektor 7 No. 18, Bintaro, Tangerang Selatan\",\n    \"operational_hours\": \"Setiap Hari: 08.00 - 18.00 WIB\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/settings/admin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"settings",
+										"admin"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Pengaturan berhasil diperbarui.\",\n    \"data\": {\n        \"whatsapp_number\": \"6281298765432\",\n        \"workshop_address\": \"Jl. Boulevard Sektor 7 No. 18, Bintaro\"\n    }\n}"
+						}
+					],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Pengaturan berhasil diperbarui\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"description": "### 14. Business Settings & WhatsApp Config\n\nModul manajemen konfigurasi dinamis (Nomor WhatsApp resmi, alamat workshop, jam buka, media sosial) yang dapat diubah langsung oleh Admin di CMS tanpa mengubah file konfigurasi server.\n"
+		},
+		{
+			"name": "15. Banner CMS (Promo & Hero Sliders)",
+			"item": [
+				{
+					"name": "1. Get Active Banners (Public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/banners",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners"
+							]
+						},
+						"description": "Mengambil daftar banner hero slider dan promo yang aktif untuk ditampilkan di carousel/landing page."
+					},
+					"response": [
+						{
+							"name": "200 OK (Active Banners for Website Carousel)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/banners",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Daftar banner aktif berhasil diambil.\",\n    \"data\": [\n        {\n            \"id\": 1,\n            \"order\": 1,\n            \"imageUrl\": \"/images/hero-detailing.jpeg\",\n            \"badgeText\": \"PREMIUM DETAILING\",\n            \"title\": \"ULTIMATE GRAPHENE CERAMIC COATING\",\n            \"button\": {\n                \"show\": true,\n                \"text\": \"BOOKING SEKARANG\",\n                \"url\": \"/services\"\n            },\n            \"isActive\": true\n        },\n        {\n            \"id\": 2,\n            \"order\": 2,\n            \"imageUrl\": \"/images/hero-login.jpeg\",\n            \"badgeText\": \"PROMO WEEKDAY\",\n            \"title\": \"DISKON 20% INTERIOR DEEP CLEAN\",\n            \"button\": {\n                \"show\": true,\n                \"text\": \"LIHAT PROMO\",\n                \"url\": \"/promo\"\n            },\n            \"isActive\": true\n        }\n    ]\n}"
+						}
+					]
+				},
+				{
+					"name": "2. Get All Banners (Admin CMS)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin"
+							]
+						},
+						"description": "Mengambil semua banner (aktif dan nonaktif) untuk tabel CMS Admin."
+					},
+					"response": [
+						{
+							"name": "200 OK (All Banners for Admin Table)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Daftar seluruh banner berhasil diambil.\",\n    \"data\": [\n        {\n            \"id\": 1,\n            \"order\": 1,\n            \"imageUrl\": \"/images/hero-detailing.jpeg\",\n            \"badgeText\": \"PREMIUM DETAILING\",\n            \"title\": \"ULTIMATE GRAPHENE CERAMIC COATING\",\n            \"button\": {\n                \"show\": true,\n                \"text\": \"BOOKING SEKARANG\",\n                \"url\": \"/services\"\n            },\n            \"isActive\": true\n        },\n        {\n            \"id\": 3,\n            \"order\": 3,\n            \"imageUrl\": \"/images/hero-store.jpeg\",\n            \"badgeText\": \"OFFICIAL STORE\",\n            \"title\": \"PRO CAR DETAILING CARE PRODUCTS\",\n            \"button\": {\n                \"show\": true,\n                \"text\": \"BELANJA SEKARANG\",\n                \"url\": \"/products\"\n            },\n            \"isActive\": false\n        }\n    ]\n}"
+						}
+					]
+				},
+				{
+					"name": "3. Create Banner (Admin CMS)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order\": 4,\n  \"imageUrl\": \"/images/hero-glass.jpeg\",\n  \"badgeText\": \"PROMO WEEKDAY\",\n  \"title\": \"DISKON 20% INTERIOR DEEP CLEAN\",\n  \"button\": {\n    \"show\": true,\n    \"text\": \"LIHAT PROMO\",\n    \"url\": \"/promo\"\n  },\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin"
+							]
+						},
+						"description": "Menambahkan banner promosi baru. Mendukung body JSON maupun multipart/form-data (upload file fisik 'image')."
+					},
+					"response": [
+						{
+							"name": "201 Created (Banner Created)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"order\": 4,\n  \"imageUrl\": \"/images/hero-glass.jpeg\",\n  \"badgeText\": \"PROMO WEEKDAY\",\n  \"title\": \"DISKON 20% INTERIOR DEEP CLEAN\",\n  \"button\": {\n    \"show\": true,\n    \"text\": \"LIHAT PROMO\",\n    \"url\": \"/promo\"\n  },\n  \"isActive\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Banner promosi berhasil ditambahkan.\",\n    \"data\": {\n        \"id\": 4,\n        \"order\": 4,\n        \"imageUrl\": \"/uploads/banners/banner-1729881234.jpg\",\n        \"badgeText\": \"FLASH SALE\",\n        \"title\": \"NANO BURN HEADLAMP RESTORATION\",\n        \"button\": {\n            \"show\": true,\n            \"text\": \"AMBIL PROMO\",\n            \"url\": \"/promo/headlamp\"\n        },\n        \"isActive\": true\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "4. Update Banner (Admin CMS)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order\": 2,\n  \"imageUrl\": \"/images/hero-login.jpeg\",\n  \"badgeText\": \"PROMO SPESIAL\",\n  \"title\": \"DISKON 25% INTERIOR DEEP CLEAN\",\n  \"button\": {\n    \"show\": true,\n    \"text\": \"KLAIM PROMO\",\n    \"url\": \"/promo/interior\"\n  },\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin",
+								"2"
+							]
+						},
+						"description": "Memperbarui isi konten banner promosi berdasarkan ID."
+					},
+					"response": [
+						{
+							"name": "200 OK (Banner Updated)",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"order\": 2,\n  \"imageUrl\": \"/images/hero-login.jpeg\",\n  \"badgeText\": \"PROMO SPESIAL\",\n  \"title\": \"DISKON 25% INTERIOR DEEP CLEAN\",\n  \"button\": {\n    \"show\": true,\n    \"text\": \"KLAIM PROMO\",\n    \"url\": \"/promo/interior\"\n  },\n  \"isActive\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin/2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin",
+										"2"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Banner berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 2,\n        \"order\": 2,\n        \"imageUrl\": \"/images/hero-login.jpeg\",\n        \"badgeText\": \"PROMO SPESIAL\",\n        \"title\": \"DISKON 25% INTERIOR DEEP CLEAN\",\n        \"button\": {\n            \"show\": true,\n            \"text\": \"KLAIM PROMO\",\n            \"url\": \"/promo/interior\"\n        },\n        \"isActive\": true\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "5. Toggle Banner Status (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin/2/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin",
+								"2",
+								"status"
+							]
+						},
+						"description": "Toggle cepat status aktif/nonaktif banner."
+					},
+					"response": [
+						{
+							"name": "200 OK (Status Toggled)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"isActive\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin/2/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin",
+										"2",
+										"status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Status banner berhasil diubah menjadi Nonaktif.\",\n    \"data\": {\n        \"id\": 2,\n        \"isActive\": false\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "6. Reorder Banners (Admin CMS)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"items\": [\n    { \"id\": 2, \"order\": 1 },\n    { \"id\": 1, \"order\": 2 },\n    { \"id\": 3, \"order\": 3 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin/reorder",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin",
+								"reorder"
+							]
+						},
+						"description": "Mengatur ulang urutan slide banner secara massal (drag and drop)."
+					},
+					"response": [
+						{
+							"name": "200 OK (Banners Reordered)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"items\": [\n    { \"id\": 2, \"order\": 1 },\n    { \"id\": 1, \"order\": 2 },\n    { \"id\": 3, \"order\": 3 }\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin/reorder",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin",
+										"reorder"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Urutan banner berhasil diperbarui.\",\n    \"data\": [\n        {\n            \"id\": 2,\n            \"order\": 1,\n            \"title\": \"DISKON 20% INTERIOR DEEP CLEAN\"\n        },\n        {\n            \"id\": 1,\n            \"order\": 2,\n            \"title\": \"ULTIMATE GRAPHENE CERAMIC COATING\"\n        }\n    ]\n}"
+						}
+					]
+				},
+				{
+					"name": "7. Delete Banner (Admin CMS)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/banners/admin/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"banners",
+								"admin",
+								"2"
+							]
+						},
+						"description": "Menghapus banner secara soft delete."
+					},
+					"response": [
+						{
+							"name": "200 OK (Banner Soft Deleted)",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/banners/admin/2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"banners",
+										"admin",
+										"2"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Banner berhasil dihapus.\"\n}"
+						}
+					]
+				}
+			],
+			"description": "### 15. Banner CMS (Promo & Hero Sliders)\n\nModul manajemen Banner Carousel dan Hero Slider promo yang dapat di-CRUD secara dinamis oleh Admin melalui CMS Dashboard."
 		}
 	]
 }

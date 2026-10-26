@@ -10,6 +10,10 @@ import couponRoutes from './coupon.routes.ts';
 import auditRoutes from './audit.routes.ts';
 import uploadRoutes from './upload.routes.ts';
 import orderRoutes from './order.routes.ts';
+import analyticsRoutes from './analytics.routes.ts';
+import chatRoutes from './chat.routes.ts';
+import settingRoutes from './setting.routes.ts';
+import bannerRoutes from './banner.routes.ts';
 
 const apiRouter = Router();
 
@@ -25,5 +29,9 @@ apiRouter.use('/coupons', couponRoutes);
 apiRouter.use('/audit-logs', auditRoutes);
 apiRouter.use('/upload', uploadRoutes);
 apiRouter.use('/orders', orderRoutes);
+apiRouter.use('/analytics', analyticsRoutes);
+apiRouter.use('/chat', chatRoutes);
+apiRouter.use('/settings', settingRoutes);
+apiRouter.use('/banners', bannerRoutes);
 
 export default apiRouter;

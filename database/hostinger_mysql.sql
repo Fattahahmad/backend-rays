@@ -1,6 +1,6 @@
 -- ========================================================================
 -- AUTO-GENERATED FOR HOSTINGER MYSQL / MARIADB
--- Generated at: 2026-09-22T04:15:51.577Z
+-- Generated at: 2026-10-26T03:58:14.944Z
 -- ========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -244,5 +244,52 @@ CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+
+-- Source: 1790100000000_enhance-chat-and-service-tables.sql
+-- 1. Penyesuaian Tabel Conversations untuk Web Live Chat
+ALTER TABLE conversations ALTER COLUMN phone_number DROP NOT NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guest_name VARCHAR(100);
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guest_email VARCHAR(100);
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- 2. Penyesuaian Tabel Messages
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 3. Penyesuaian Tabel Services untuk Katalog Detailing & Kalkulator
+ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS duration VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'main';
+
+-- 4. Penyesuaian Tabel Service Portfolios
+ALTER TABLE service_portfolios ADD COLUMN IF NOT EXISTS car_model VARCHAR(255);
+ALTER TABLE service_portfolios ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Source: 1790100100000_create-settings-table.sql
+CREATE TABLE IF NOT EXISTS settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    category VARCHAR(50) NOT NULL DEFAULT 'general',
+    description VARCHAR(255),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Source: 1790100200000_create-banners-table.sql
+CREATE TABLE IF NOT EXISTS banners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sort_order INT NOT NULL DEFAULT 1,
+    image_url VARCHAR(500) NOT NULL,
+    badge_text VARCHAR(255),
+    title VARCHAR(255) NOT NULL,
+    button_show BOOLEAN NOT NULL DEFAULT TRUE,
+    button_text VARCHAR(255) DEFAULT 'LIHAT PROMO',
+    button_url VARCHAR(500) DEFAULT '/promo',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
