@@ -164,6 +164,9 @@
 									"    if (res.user && res.user.id) {",
 									"        pm.environment.set(\"userId\", res.user.id);",
 									"    }",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -367,6 +370,9 @@
 									"if (res.token) {",
 									"    pm.environment.set(\"accessToken\", res.token);",
 									"    pm.environment.set(\"superAdminToken\", res.token);",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -454,6 +460,9 @@
 									"if (res.token) {",
 									"    pm.environment.set(\"accessToken\", res.token);",
 									"    pm.environment.set(\"adminToken\", res.token);",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -541,6 +550,9 @@
 									"if (res.token) {",
 									"    pm.environment.set(\"accessToken\", res.token);",
 									"    pm.environment.set(\"customerToken\", res.token);",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -626,6 +638,9 @@
 									"});",
 									"if ((pm.response.code === 200 || pm.response.code === 201) && (res.accessToken || res.token)) {",
 									"    pm.environment.set(\"accessToken\", res.accessToken || res.token);",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -693,6 +708,107 @@
 							"body": "{\n    \"success\": true,\n    \"message\": \"Login Google berhasil!\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTMsImVtYWlsIjoiZmF0dGFoLmFobWFkMDRAZ21haWwuY29tIiwicm9sZSI6InVzZXIifQ...\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTMsImVtYWlsIjoiZmF0dGFoLmFobWFkMDRAZ21haWwuY29tIiwicm9sZSI6InVzZXIifQ...\",\n    \"user\": {\n        \"id\": 13,\n        \"name\": \"Fattah Ahmad\",\n        \"email\": \"fattah.ahmad04@gmail.com\",\n        \"role\": \"user\",\n        \"avatar_url\": \"https://lh3.googleusercontent.com/a/ACg8ocIS8Yg...\",\n        \"phone_number\": null\n    },\n    \"needsPhone\": true\n}"
 						}
 					]
+				},
+				{
+					"name": "Refresh Access Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Token berhasil diperbarui\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.accessToken).to.be.a('string');",
+									"});",
+									"if (res.accessToken) {",
+									"    pm.environment.set(\"accessToken\", res.accessToken);",
+									"}",
+									"if (res.refreshToken) {",
+									"    pm.environment.set(\"refreshToken\", res.refreshToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						},
+						"description": "Meminta Access Token baru secara otomatis menggunakan Refresh Token yang sah"
+					}
+				},
+				{
+					"name": "Logout (End Session & Revoke Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Logout berhasil\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});",
+									"pm.environment.set(\"accessToken\", \"\");",
+									"pm.environment.set(\"refreshToken\", \"\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Mengakhiri sesi user dan mematikan refresh token di server"
+					}
 				}
 			],
 			"description": "### 1. Authentication\n\nEndpoint manajemen identitas pengguna, registrasi dengan verifikasi email via OTP 6-digit, login password, dan Google OAuth.\n"
@@ -1096,6 +1212,57 @@
 							}
 						}
 					]
+				},
+				{
+					"name": "Get User Dashboard (Mobile/Web Akun Page)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"Dashboard akun berhasil dimuat\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data.user).to.be.an('object');",
+									"    pm.expect(res.data.loyalty_points).to.be.an('object');",
+									"    pm.expect(res.data.stats).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"dashboard"
+							],
+							"query": [
+								{
+									"key": "demo",
+									"value": "true",
+									"disabled": true,
+									"description": "Set true untuk preview mock jika user belum punya pesanan riil"
+								}
+							]
+						},
+						"description": "Mengambil data lengkap halaman Akun (User Profile, Poin Kilau, Stat Pesanan & Kupon, Kartu Pesanan Sedang Dikirim, Kontak CS)"
+					}
 				}
 			],
 			"description": "### 2. Users & Profile\n\nManajemen akun pengguna aktif, edit profil, ganti password, dan surveillance manajemen pengguna untuk Admin / Super Admin.\n"
@@ -4253,7 +4420,10 @@
 									"const res = pm.response.json();",
 									"pm.test(\"Operasi POST berhasil\", function () {",
 									"    pm.expect(res.success).to.be.true;",
-									"});"
+									"});",
+									"if (res.data && res.data.url) {",
+									"    pm.environment.set(\"lastUploadedUrl\", res.data.url);",
+									"}"
 								],
 								"type": "text/javascript"
 							}
@@ -4366,6 +4536,116 @@
 							}
 						}
 					]
+				},
+				{
+					"name": "Replace Uploaded File",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"File berhasil digantikan\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});",
+									"if (res.data && res.data.url) {",
+									"    pm.environment.set(\"lastUploadedUrl\", res.data.url);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/upload/replace?old_url={{lastUploadedUrl}}&folder=general",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"upload",
+								"replace"
+							],
+							"query": [
+								{
+									"key": "old_url",
+									"value": "{{lastUploadedUrl}}",
+									"description": "URL file lama yang akan dihapus dari storage disk"
+								},
+								{
+									"key": "folder",
+									"value": "general"
+								}
+							]
+						},
+						"description": "Mengunggah file gambar baru sekaligus menghapus file lama dari storage disk"
+					}
+				},
+				{
+					"name": "Delete Uploaded File from Storage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"const res = pm.response.json();",
+									"pm.test(\"File berhasil dihapus\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/upload?url={{lastUploadedUrl}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"upload"
+							],
+							"query": [
+								{
+									"key": "url",
+									"value": "{{lastUploadedUrl}}",
+									"description": "Path relatif (/uploads/...) atau full URL file yang ingin dihapus"
+								}
+							]
+						},
+						"description": "Menghapus file fisik dari storage disk lokal secara aman"
+					}
 				}
 			],
 			"description": "### 10. Media Uploads (Local Hostinger Storage)\n\nSistem penyimpanan media gambar lokal di server tanpa ketergantungan cloud pihak ketiga, hemat biaya dan terintegrasi langsung.\n"

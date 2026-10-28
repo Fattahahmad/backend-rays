@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { query } from '../config/db.ts';
+import { deleteFileIfExists } from '../utils/file.util.ts';
 
 /**
  * Helper untuk membuat URL slug yang rapi dari judul artikel
@@ -231,7 +232,7 @@ export async function updateBlog(req: Request, res: Response): Promise<void> {
         const id = parseInt(req.params.id as string);
         const { title, content, excerpt, image_url, is_published } = req.body;
 
-        const check = await query('SELECT id, slug, title FROM blogs WHERE id = $1', [id]);
+        const check = await query('SELECT id, slug, title, image_url FROM blogs WHERE id = $1', [id]);
         if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Artikel tidak ditemukan.' });
             return;
@@ -268,8 +269,14 @@ export async function updateBlog(req: Request, res: Response): Promise<void> {
         }
 
         if (image_url !== undefined) {
+            const newImageUrl = image_url ? image_url.trim() : null;
             fields.push(`image_url = $${index++}`);
-            values.push(image_url.trim());
+            values.push(newImageUrl);
+
+            // Bersihkan file gambar lama jika diganti
+            if (check.rows[0].image_url && check.rows[0].image_url !== newImageUrl) {
+                deleteFileIfExists(check.rows[0].image_url);
+            }
         }
 
         if (is_published !== undefined) {
@@ -310,19 +317,22 @@ export async function updateBlog(req: Request, res: Response): Promise<void> {
 
 /**
  * DELETE /api/blogs/:id (Admin / Super Admin Only)
- * Menghapus artikel dari database
+ * Menghapus artikel dari database dan membersihkan gambar dari storage
  */
 export async function deleteBlog(req: Request, res: Response): Promise<void> {
     try {
         const id = parseInt(req.params.id as string);
 
-        const check = await query('SELECT id FROM blogs WHERE id = $1', [id]);
+        const check = await query('SELECT id, image_url FROM blogs WHERE id = $1', [id]);
         if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Artikel tidak ditemukan.' });
             return;
         }
 
         await query('DELETE FROM blogs WHERE id = $1', [id]);
+
+        // Hapus file fisik gambar artikel jika tersimpan di uploads
+        deleteFileIfExists(check.rows[0].image_url);
 
         res.json({
             success: true,

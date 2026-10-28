@@ -1,0 +1,9 @@
+-- Up Migration
+ALTER TABLE banners ALTER COLUMN image_url TYPE TEXT;
+ALTER TABLE banners ALTER COLUMN button_url TYPE TEXT;
+ALTER TABLE banners ALTER COLUMN title TYPE TEXT;
+
+-- Down Migration
+ALTER TABLE banners ALTER COLUMN image_url TYPE VARCHAR(500);
+ALTER TABLE banners ALTER COLUMN button_url TYPE VARCHAR(500);
+ALTER TABLE banners ALTER COLUMN title TYPE VARCHAR(255);

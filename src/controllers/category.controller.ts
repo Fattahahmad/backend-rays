@@ -19,16 +19,37 @@ function slugify(text: string): string {
  */
 export async function getCategories(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : (req.query.all === 'true' ? 1000 : 20);
+        const offset = (page - 1) * limit;
+        const search = req.query.search as string;
+
+        let whereClause = '';
+        const params: any[] = [];
+        let index = 1;
+
+        if (search) {
+            whereClause = `WHERE c.name ILIKE $${index} OR c.slug ILIKE $${index}`;
+            params.push(`%${search.trim()}%`);
+            index++;
+        }
+
+        const countResult = await query(`SELECT COUNT(*) as total FROM categories c ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
         const sql = `
             SELECT c.id, c.name, c.slug, c.created_at,
                    COUNT(CASE WHEN p.deleted_at IS NULL AND p.is_active = true THEN 1 END) as product_count
             FROM categories c
             LEFT JOIN products p ON c.id = p.category_id
+            ${whereClause}
             GROUP BY c.id
             ORDER BY c.name ASC
+            LIMIT $${index++} OFFSET $${index}
         `;
+        params.push(limit, offset);
 
-        const result = await query(sql);
+        const result = await query(sql, params);
 
         const data = result.rows.map(row => ({
             ...row,
@@ -38,6 +59,12 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
         res.json({
             success: true,
             data,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('Get categories error:', error);

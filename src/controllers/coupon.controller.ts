@@ -127,13 +127,49 @@ export async function validateCoupon(req: Request, res: Response): Promise<void>
  */
 export async function listCouponsAdmin(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search as string;
+        const activeOnly = req.query.active_only;
+
+        let whereClause = '';
+        const params: any[] = [];
+        let index = 1;
+
+        if (activeOnly === 'true') {
+            whereClause = 'WHERE is_active = true';
+        }
+
+        if (search) {
+            const prefix = whereClause ? ' AND' : 'WHERE';
+            whereClause += `${prefix} UPPER(code) LIKE $${index}`;
+            params.push(`%${search.trim().toUpperCase()}%`);
+            index++;
+        }
+
+        const countResult = await query(`SELECT COUNT(*) as total FROM coupons ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
+        params.push(limit, offset);
         const result = await query(
-            'SELECT id, code, discount_type, discount_value, min_purchase, valid_days, is_active, created_at FROM coupons ORDER BY id DESC'
+            `SELECT id, code, discount_type, discount_value, min_purchase, valid_days, is_active, created_at 
+             FROM coupons 
+             ${whereClause} 
+             ORDER BY id DESC 
+             LIMIT $${index++} OFFSET $${index}`,
+            params
         );
 
         res.json({
             success: true,
             data: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('List coupons error:', error);

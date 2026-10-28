@@ -7,23 +7,43 @@ import { query } from '../config/db.ts';
  */
 export async function getFaqs(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 20;
+        const offset = (page - 1) * limit;
         const { category } = req.query;
 
-        let sql = 'SELECT id, question, answer, category, order_index FROM faqs WHERE is_active = true';
+        let whereClause = 'WHERE is_active = true';
         const params: any[] = [];
+        let index = 1;
 
         if (category) {
-            sql += ' AND category = $1';
+            whereClause += ` AND category = $${index++}`;
             params.push(category);
         }
 
-        sql += ' ORDER BY order_index ASC, id ASC';
+        const countResult = await query(`SELECT COUNT(*) as total FROM faqs ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
+        const sql = `
+            SELECT id, question, answer, category, order_index 
+            FROM faqs 
+            ${whereClause} 
+            ORDER BY order_index ASC, id ASC 
+            LIMIT $${index++} OFFSET $${index}
+        `;
+        params.push(limit, offset);
 
         const result = await query(sql, params);
 
         res.json({
             success: true,
             data: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('Get FAQs error:', error);
@@ -37,13 +57,51 @@ export async function getFaqs(req: Request, res: Response): Promise<void> {
  */
 export async function getAllFaqsAdmin(req: Request, res: Response): Promise<void> {
     try {
-        const result = await query(
-            'SELECT id, question, answer, category, order_index, is_active, created_at, updated_at FROM faqs ORDER BY order_index ASC, id ASC'
-        );
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search as string;
+        const category = req.query.category as string;
+
+        let whereClause = '';
+        const params: any[] = [];
+        let index = 1;
+
+        if (category) {
+            whereClause = `WHERE category = $${index++}`;
+            params.push(category);
+        }
+
+        if (search) {
+            const prefix = whereClause ? ' AND' : 'WHERE';
+            whereClause += `${prefix} (question ILIKE $${index} OR answer ILIKE $${index})`;
+            params.push(`%${search.trim()}%`);
+            index++;
+        }
+
+        const countResult = await query(`SELECT COUNT(*) as total FROM faqs ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
+        const sql = `
+            SELECT id, question, answer, category, order_index, is_active, created_at, updated_at 
+            FROM faqs 
+            ${whereClause} 
+            ORDER BY order_index ASC, id ASC 
+            LIMIT $${index++} OFFSET $${index}
+        `;
+        params.push(limit, offset);
+
+        const result = await query(sql, params);
 
         res.json({
             success: true,
             data: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('Get all FAQs admin error:', error);

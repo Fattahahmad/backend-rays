@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { query } from '../config/db.ts';
+import { deleteFileIfExists } from '../utils/file.util.ts';
 
 function slugify(text: string): string {
     return text
@@ -325,23 +326,75 @@ export async function updateProduct(req: Request, res: Response): Promise<void> 
             values.push(Boolean(is_active));
         }
 
-        if (fields.length === 0) {
+        const hasImageUpdates = req.body.images !== undefined && Array.isArray(req.body.images);
+
+        if (fields.length === 0 && !hasImageUpdates) {
             res.status(400).json({ success: false, message: 'Tidak ada data produk yang diperbarui.' });
             return;
         }
 
-        fields.push(`updated_at = CURRENT_TIMESTAMP`);
-        values.push(id);
+        if (fields.length > 0) {
+            fields.push(`updated_at = CURRENT_TIMESTAMP`);
+            values.push(id);
 
-        const updateSql = `UPDATE products SET ${fields.join(', ')} WHERE id = $${index}`;
-        await query(updateSql, values);
+            const updateSql = `UPDATE products SET ${fields.join(', ')} WHERE id = $${index}`;
+            await query(updateSql, values);
+        } else {
+            await query('UPDATE products SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+        }
+
+        // Sinkronisasi galeri foto produk jika disertakan dalam payload
+        if (hasImageUpdates) {
+            const newImages: any[] = req.body.images;
+            const currentImages = await query('SELECT id, image_url FROM product_images WHERE product_id = $1', [id]);
+
+            const newUrls = new Set(
+                newImages.map((img: any) => (typeof img === 'string' ? img.trim() : (img.image_url || '').trim())).filter(Boolean)
+            );
+
+            // 1. Hapus foto lama yang tidak ada lagi di daftar baru (hapus dari database dan fisik file di uploads/)
+            for (const cur of currentImages.rows) {
+                if (!newUrls.has(cur.image_url)) {
+                    await query('DELETE FROM product_images WHERE id = $1', [cur.id]);
+                    deleteFileIfExists(cur.image_url);
+                }
+            }
+
+            // 2. Tambahkan gambar baru atau perbarui status is_primary
+            const existingUrls = new Set(currentImages.rows.map(r => r.image_url));
+            for (let i = 0; i < newImages.length; i++) {
+                const img = newImages[i];
+                const imgUrl = typeof img === 'string' ? img.trim() : (img.image_url || '').trim();
+                const isPrimary = typeof img === 'object' && img.is_primary !== undefined ? Boolean(img.is_primary) : i === 0;
+
+                if (imgUrl && !existingUrls.has(imgUrl)) {
+                    await query(
+                        'INSERT INTO product_images (product_id, image_url, is_primary) VALUES ($1, $2, $3)',
+                        [id, imgUrl, isPrimary]
+                    );
+                } else if (imgUrl && typeof img === 'object' && img.is_primary !== undefined) {
+                    await query('UPDATE product_images SET is_primary = $1 WHERE product_id = $2 AND image_url = $3', [
+                        isPrimary,
+                        id,
+                        imgUrl,
+                    ]);
+                }
+            }
+        }
 
         const updated = await query('SELECT * FROM products WHERE id = $1', [id]);
+        const productImages = await query(
+            'SELECT id, image_url, is_primary FROM product_images WHERE product_id = $1 ORDER BY is_primary DESC, id ASC',
+            [id]
+        );
 
         res.json({
             success: true,
             message: 'Produk berhasil diperbarui.',
-            data: updated.rows[0],
+            data: {
+                ...updated.rows[0],
+                images: productImages.rows,
+            },
         });
     } catch (error) {
         console.error('Update product error:', error);
@@ -365,9 +418,16 @@ export async function deleteProduct(req: Request, res: Response): Promise<void> 
 
         await query('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
 
+        // Bersihkan foto galeri produk dari storage
+        const imagesResult = await query('SELECT image_url FROM product_images WHERE product_id = $1', [id]);
+        for (const img of imagesResult.rows) {
+            deleteFileIfExists(img.image_url);
+        }
+        await query('DELETE FROM product_images WHERE product_id = $1', [id]);
+
         res.json({
             success: true,
-            message: `Produk '${check.rows[0].name}' berhasil dihapus (soft-delete).`,
+            message: `Produk '${check.rows[0].name}' berhasil dihapus.`,
         });
     } catch (error) {
         console.error('Delete product error:', error);
@@ -423,19 +483,22 @@ export async function addProductImage(req: Request, res: Response): Promise<void
 
 /**
  * DELETE /api/products/images/:imageId (Admin / Super Admin Only)
- * Menghapus 1 foto dari galeri produk
+ * Menghapus 1 foto dari galeri produk dan membersihkannya dari storage
  */
 export async function deleteProductImage(req: Request, res: Response): Promise<void> {
     try {
         const imageId = parseInt(req.params.imageId as string);
 
-        const check = await query('SELECT id, product_id FROM product_images WHERE id = $1', [imageId]);
+        const check = await query('SELECT id, product_id, image_url FROM product_images WHERE id = $1', [imageId]);
         if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Foto tidak ditemukan.' });
             return;
         }
 
         await query('DELETE FROM product_images WHERE id = $1', [imageId]);
+
+        // Hapus file fisik foto produk dari folder storage uploads
+        deleteFileIfExists(check.rows[0].image_url);
 
         res.json({
             success: true,

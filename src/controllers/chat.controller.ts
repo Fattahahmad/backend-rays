@@ -91,10 +91,17 @@ export async function getConversationMessages(req: Request, res: Response): Prom
             return;
         }
 
-        // Ambil riwayat seluruh pesan diurutkan dari yang terlama ke terbaru
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : (req.query.all === 'true' ? 1000 : 50);
+        const offset = (page - 1) * limit;
+
+        const countMsg = await query('SELECT COUNT(*) as total FROM messages WHERE conversation_id = $1', [conversationId]);
+        const total = parseInt((countMsg.rows[0] as any).total, 10) || 0;
+
+        // Ambil riwayat pesan diurutkan dari yang terlama ke terbaru dengan pagination
         const messagesRes = await query(
-            `SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`,
-            [conversationId]
+            `SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
+            [conversationId, limit, offset]
         );
 
         res.json({
@@ -102,6 +109,12 @@ export async function getConversationMessages(req: Request, res: Response): Prom
             data: {
                 conversation: convRes.rows[0],
                 messages: messagesRes.rows,
+            },
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
             },
         });
     } catch (error: any) {
@@ -174,6 +187,9 @@ export async function sendMessageHttp(req: Request, res: Response): Promise<void
  */
 export async function listAdminConversations(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 15;
+        const offset = (page - 1) * limit;
         const statusFilter = (req.query.status as string) || 'all';
 
         let whereClause = '';
@@ -182,6 +198,12 @@ export async function listAdminConversations(req: Request, res: Response): Promi
             params.push(statusFilter);
             whereClause = `WHERE c.status = $${params.length}`;
         }
+
+        const countResult = await query(`SELECT COUNT(*) as total FROM conversations c ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
+        let index = params.length + 1;
+        params.push(limit, offset);
 
         const sql = `
             SELECT 
@@ -227,6 +249,7 @@ export async function listAdminConversations(req: Request, res: Response): Promi
             LEFT JOIN users u ON c.user_id = u.id
             ${whereClause}
             ORDER BY c.updated_at DESC
+            LIMIT $${index++} OFFSET $${index}
         `;
 
         const result = await query(sql, params);
@@ -234,6 +257,12 @@ export async function listAdminConversations(req: Request, res: Response): Promi
         res.json({
             success: true,
             data: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error: any) {
         console.error('List admin conversations error:', error);

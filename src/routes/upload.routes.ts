@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { uploadSingleFile, uploadMultipleFiles } from '../controllers/upload.controller.ts';
+import { uploadSingleFile, uploadMultipleFiles, replaceUploadedFile, deleteUploadedFile } from '../controllers/upload.controller.ts';
 import { upload } from '../config/multer.ts';
 import { authenticateToken } from '../middlewares/auth.middleware.ts';
 
@@ -35,6 +35,9 @@ const handleMultipleUpload = (req: any, res: any, next: any) => {
 };
 
 router.post('/single', authenticateToken, handleSingleUpload, uploadSingleFile);
+router.post('/replace', authenticateToken, handleSingleUpload, replaceUploadedFile);
+router.put('/replace', authenticateToken, handleSingleUpload, replaceUploadedFile);
 router.post('/multiple', authenticateToken, handleMultipleUpload, uploadMultipleFiles);
+router.delete('/', authenticateToken, deleteUploadedFile);
 
 export default router;

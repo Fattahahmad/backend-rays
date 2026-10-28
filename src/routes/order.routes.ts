@@ -21,6 +21,7 @@ router.get('/my-orders', authenticateToken, getMyOrders);
 // Admin CMS Order Routes (Admin / Super Admin)
 // Note: Registered before /:orderNumber to avoid URL pattern collisions
 // ==========================================
+router.get('/admin', authenticateToken, requireRoles('admin', 'super_admin'), listAllOrdersAdmin);
 router.get('/admin/all', authenticateToken, requireRoles('admin', 'super_admin'), listAllOrdersAdmin);
 router.patch('/admin/:id/shipping', authenticateToken, requireRoles('admin', 'super_admin'), updateOrderShipping);
 router.patch('/admin/:id/status', authenticateToken, requireRoles('admin', 'super_admin'), updateOrderStatus);

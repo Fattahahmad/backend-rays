@@ -1,6 +1,70 @@
 import type { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { query } from '../config/db.ts';
 import { recordAuditLog } from '../services/audit.service.ts';
+import { deleteFileIfExists } from '../utils/file.util.ts';
+
+/**
+ * Mendapatkan full URL absolut untuk asset backend jika path diawali dengan /uploads
+ */
+export function getFullImageUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3001}`;
+    if (url.startsWith('/uploads')) {
+        return `${baseUrl}${url}`;
+    }
+    return url;
+}
+
+/**
+ * Otomatis mendeteksi Base64 Data URI, menyimpannya sebagai file di uploads/banners/,
+ * dan mengembalikan path relatif yang bersih (/uploads/banners/banner-b64-xxx.jpg)
+ */
+export function handleBase64Image(dataString: string): string {
+    if (!dataString || typeof dataString !== 'string') return dataString;
+    const matches = dataString.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+        return dataString; // Bukan base64, kembalikan URL/string aslinya
+    }
+
+    try {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Validasi ukuran maksimal 2MB
+        if (buffer.length > 2 * 1024 * 1024) {
+            const sizeInMb = (buffer.length / (1024 * 1024)).toFixed(2);
+            const err: any = new Error(`Ukuran gambar Base64 (${sizeInMb}MB) melebihi batas maksimal 2MB.`);
+            err.statusCode = 400;
+            throw err;
+        }
+
+        let ext = '.jpg';
+        if (mimeType.includes('png')) ext = '.png';
+        else if (mimeType.includes('webp')) ext = '.webp';
+        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = '.jpg';
+
+        const filename = `banner-b64-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        const targetDir = path.join(process.cwd(), 'uploads', 'banners');
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const filePath = path.join(targetDir, filename);
+        fs.writeFileSync(filePath, buffer);
+
+        return `/uploads/banners/${filename}`;
+    } catch (err: any) {
+        if (err.statusCode === 400) {
+            throw err;
+        }
+        console.error('Gagal memproses file Base64 image:', err);
+        return dataString;
+    }
+}
 
 /**
  * Format baris data database menjadi format JSON standar CMS Banner
@@ -10,6 +74,7 @@ export function formatBanner(b: any) {
         id: b.id,
         order: b.sort_order,
         imageUrl: b.image_url,
+        fullImageUrl: getFullImageUrl(b.image_url),
         badgeText: b.badge_text,
         title: b.title,
         button: {
@@ -45,9 +110,13 @@ function parseButtonData(reqBody: any) {
         if (btn.text !== undefined) text = String(btn.text).trim();
         if (btn.url !== undefined) url = String(btn.url).trim();
     } else {
-        if (reqBody.button_show !== undefined) show = reqBody.button_show === 'true' || reqBody.button_show === true;
-        if (reqBody.button_text !== undefined) text = String(reqBody.button_text).trim();
-        if (reqBody.button_url !== undefined) url = String(reqBody.button_url).trim();
+        const rawShow = reqBody.button_show ?? reqBody.buttonShow;
+        const rawText = reqBody.button_text ?? reqBody.buttonText;
+        const rawUrl = reqBody.button_url ?? reqBody.buttonUrl;
+
+        if (rawShow !== undefined) show = rawShow === 'true' || rawShow === true;
+        if (rawText !== undefined) text = String(rawText).trim();
+        if (rawUrl !== undefined) url = String(rawUrl).trim();
     }
 
     return { show, text, url };
@@ -57,18 +126,35 @@ function parseButtonData(reqBody: any) {
  * GET /api/banners (Public)
  * Mengambil daftar banner promosi & hero slider yang aktif
  */
-export async function getPublicBanners(_req: Request, res: Response): Promise<void> {
+export async function getPublicBanners(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const offset = (page - 1) * limit;
+
+        const countResult = await query(
+            'SELECT COUNT(*) as total FROM banners WHERE is_active = true AND deleted_at IS NULL'
+        );
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
         const result = await query(
             `SELECT * FROM banners 
              WHERE is_active = true AND deleted_at IS NULL 
-             ORDER BY sort_order ASC, id ASC`
+             ORDER BY sort_order ASC, id ASC
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
         );
 
         res.json({
             success: true,
             message: 'Daftar banner aktif berhasil diambil.',
             data: result.rows.map(formatBanner),
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error: any) {
         console.error('Error fetching public banners:', error);
@@ -80,18 +166,45 @@ export async function getPublicBanners(_req: Request, res: Response): Promise<vo
  * GET /api/banners/admin (Admin CMS)
  * Mengambil semua banner (aktif maupun tidak aktif) untuk tabel CMS Admin
  */
-export async function getAdminBanners(_req: Request, res: Response): Promise<void> {
+export async function getAdminBanners(req: Request, res: Response): Promise<void> {
     try {
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search as string;
+
+        let whereClause = 'WHERE deleted_at IS NULL';
+        const params: any[] = [];
+        let index = 1;
+
+        if (search) {
+            whereClause += ` AND (title ILIKE $${index} OR badge_text ILIKE $${index})`;
+            params.push(`%${search.trim()}%`);
+            index++;
+        }
+
+        const countResult = await query(`SELECT COUNT(*) as total FROM banners ${whereClause}`, params);
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
+
+        params.push(limit, offset);
         const result = await query(
             `SELECT * FROM banners 
-             WHERE deleted_at IS NULL 
-             ORDER BY sort_order ASC, id ASC`
+             ${whereClause} 
+             ORDER BY sort_order ASC, id ASC
+             LIMIT $${index++} OFFSET $${index}`,
+            params
         );
 
         res.json({
             success: true,
             message: 'Daftar seluruh banner berhasil diambil.',
             data: result.rows.map(formatBanner),
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error: any) {
         console.error('Error fetching admin banners:', error);
@@ -106,7 +219,13 @@ export async function getAdminBanners(_req: Request, res: Response): Promise<voi
 export async function getBannerById(req: Request, res: Response): Promise<void> {
     try {
         const { id } = req.params;
-        const result = await query('SELECT * FROM banners WHERE id = $1 AND deleted_at IS NULL', [id]);
+        const bannerId = parseInt(String(id), 10);
+        if (isNaN(bannerId)) {
+            res.status(400).json({ success: false, message: 'ID banner harus berupa angka yang valid.' });
+            return;
+        }
+
+        const result = await query('SELECT * FROM banners WHERE id = $1 AND deleted_at IS NULL', [bannerId]);
 
         if (result.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Banner tidak ditemukan.' });
@@ -129,9 +248,9 @@ export async function getBannerById(req: Request, res: Response): Promise<void> 
  */
 export async function createBanner(req: Request, res: Response): Promise<void> {
     try {
-        const { title, badgeText, badge_text } = req.body;
+        const { title, badgeText, badge_text, badge } = req.body;
         const rawOrder = req.body.order ?? req.body.sort_order;
-        const rawIsActive = req.body.isActive ?? req.body.is_active;
+        const rawIsActive = req.body.isActive ?? req.body.is_active ?? req.body.status;
 
         if (!title) {
             res.status(400).json({ success: false, message: 'Judul (title) banner wajib diisi.' });
@@ -142,8 +261,8 @@ export async function createBanner(req: Request, res: Response): Promise<void> {
         let imageUrl = '';
         if (req.file) {
             imageUrl = `/uploads/banners/${req.file.filename}`;
-        } else if (req.body.imageUrl || req.body.image_url) {
-            imageUrl = String(req.body.imageUrl || req.body.image_url).trim();
+        } else if (req.body.imageUrl || req.body.image_url || req.body.image || req.body.url) {
+            imageUrl = handleBase64Image(String(req.body.imageUrl || req.body.image_url || req.body.image || req.body.url).trim());
         }
 
         if (!imageUrl) {
@@ -160,15 +279,15 @@ export async function createBanner(req: Request, res: Response): Promise<void> {
             sortOrder = parseInt(maxOrder.rows[0].next_order, 10);
         }
 
-        const badge = badgeText || badge_text || null;
-        const isActive = rawIsActive === undefined ? true : (rawIsActive === true || rawIsActive === 'true');
+        const finalBadge = badgeText || badge_text || badge || null;
+        const isActive = rawIsActive === undefined ? true : (rawIsActive === true || rawIsActive === 'true' || rawIsActive === 'active');
         const { show: btnShow, text: btnText, url: btnUrl } = parseButtonData(req.body);
 
         const insertResult = await query(
             `INSERT INTO banners (sort_order, image_url, badge_text, title, button_show, button_text, button_url, is_active)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING *`,
-            [sortOrder, imageUrl, badge, title.trim(), btnShow, btnText, btnUrl, isActive]
+            [sortOrder, imageUrl, finalBadge, title.trim(), btnShow, btnText, btnUrl, isActive]
         );
 
         const newBanner = insertResult.rows[0];
@@ -192,6 +311,10 @@ export async function createBanner(req: Request, res: Response): Promise<void> {
             data: formatBanner(newBanner),
         });
     } catch (error: any) {
+        if (error.statusCode === 400 || error.message?.includes('2MB')) {
+            res.status(400).json({ success: false, message: error.message });
+            return;
+        }
         console.error('Error creating banner:', error);
         res.status(500).json({ success: false, message: 'Gagal membuat banner promosi.' });
     }
@@ -212,21 +335,27 @@ export async function updateBanner(req: Request, res: Response): Promise<void> {
         }
 
         const current = check.rows[0];
-        const { title, badgeText, badge_text } = req.body;
+        const { title, badgeText, badge_text, badge } = req.body;
         const rawOrder = req.body.order ?? req.body.sort_order;
-        const rawIsActive = req.body.isActive ?? req.body.is_active;
+        const rawIsActive = req.body.isActive ?? req.body.is_active ?? req.body.status;
 
         let imageUrl = current.image_url;
         if (req.file) {
             imageUrl = `/uploads/banners/${req.file.filename}`;
-        } else if (req.body.imageUrl || req.body.image_url) {
-            imageUrl = String(req.body.imageUrl || req.body.image_url).trim();
+        } else if (req.body.imageUrl !== undefined || req.body.image_url !== undefined || req.body.image !== undefined || req.body.url !== undefined) {
+            const rawImg = String(req.body.imageUrl ?? req.body.image_url ?? req.body.image ?? req.body.url).trim();
+            imageUrl = handleBase64Image(rawImg);
+        }
+
+        // Hapus file gambar lama jika diganti dengan gambar baru
+        if (imageUrl !== current.image_url) {
+            deleteFileIfExists(current.image_url);
         }
 
         const sortOrder = rawOrder !== undefined && rawOrder !== '' ? parseInt(String(rawOrder), 10) : current.sort_order;
         const newTitle = title !== undefined ? String(title).trim() : current.title;
-        const newBadge = badgeText !== undefined ? badgeText : (badge_text !== undefined ? badge_text : current.badge_text);
-        const isActive = rawIsActive !== undefined ? (rawIsActive === true || rawIsActive === 'true') : current.is_active;
+        const newBadge = badgeText !== undefined ? badgeText : (badge_text !== undefined ? badge_text : (badge !== undefined ? badge : current.badge_text));
+        const isActive = rawIsActive !== undefined ? (rawIsActive === true || rawIsActive === 'true' || rawIsActive === 'active') : current.is_active;
 
         const { show: btnShow, text: btnText, url: btnUrl } = parseButtonData({
             button: req.body.button,
@@ -265,6 +394,10 @@ export async function updateBanner(req: Request, res: Response): Promise<void> {
             data: formatBanner(updatedBanner),
         });
     } catch (error: any) {
+        if (error.statusCode === 400 || error.message?.includes('2MB')) {
+            res.status(400).json({ success: false, message: error.message });
+            return;
+        }
         console.error('Error updating banner:', error);
         res.status(500).json({ success: false, message: 'Gagal memperbarui banner.' });
     }
@@ -343,13 +476,13 @@ export async function reorderBanners(req: Request, res: Response): Promise<void>
 
 /**
  * DELETE /api/banners/admin/:id (Admin CMS)
- * Menghapus banner (Soft Delete)
+ * Menghapus banner (Soft Delete) dan membersihkan file gambar fisik dari storage
  */
 export async function deleteBanner(req: Request, res: Response): Promise<void> {
     try {
         const { id } = req.params;
 
-        const check = await query('SELECT id, title FROM banners WHERE id = $1 AND deleted_at IS NULL', [id]);
+        const check = await query('SELECT id, title, image_url FROM banners WHERE id = $1 AND deleted_at IS NULL', [id]);
         if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Banner tidak ditemukan.' });
             return;
@@ -357,6 +490,9 @@ export async function deleteBanner(req: Request, res: Response): Promise<void> {
 
         const idStr = String(id);
         await query('UPDATE banners SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1', [idStr]);
+
+        // Hapus file fisik banner dari folder uploads
+        deleteFileIfExists(check.rows[0].image_url);
 
         // Audit Log
         if (req.user) {

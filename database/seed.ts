@@ -13,23 +13,25 @@ async function seed() {
         // -------------------------------------------------------------
         console.log('1. Memeriksa & membuat akun pengguna default...');
 
+        const defaultSeedPass = process.env.DEFAULT_SEED_PASSWORD || 'DevTesting2026!';
+
         const usersToSeed = [
             {
                 name: process.env.SUPER_ADMIN_NAME || 'Super Administrator Rays',
                 email: (process.env.SUPER_ADMIN_EMAIL || 'superadmin@raysautocare.com').toLowerCase().trim(),
-                password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin123!',
+                password: process.env.SUPER_ADMIN_PASSWORD || defaultSeedPass,
                 role: 'super_admin',
             },
             {
                 name: process.env.ADMIN_NAME || 'Admin Operasional Rays',
                 email: (process.env.ADMIN_EMAIL || 'admin@raysautocare.com').toLowerCase().trim(),
-                password: process.env.ADMIN_PASSWORD || 'Admin123!',
+                password: process.env.ADMIN_PASSWORD || defaultSeedPass,
                 role: 'admin',
             },
             {
                 name: process.env.DEMO_USER_NAME || 'Customer Demo',
                 email: (process.env.DEMO_USER_EMAIL || 'customer@raysautocare.com').toLowerCase().trim(),
-                password: process.env.DEMO_USER_PASSWORD || 'Customer123!',
+                password: process.env.DEMO_USER_PASSWORD || defaultSeedPass,
                 role: 'user',
             },
         ];
@@ -349,25 +351,74 @@ async function seed() {
             }
         }
 
+        // -------------------------------------------------------------
+        // 10. SEED BLOG ARTIKEL & EDUKASI AUTO DETAILING
+        // -------------------------------------------------------------
+        console.log('10. Memeriksa & membuat artikel blog default...');
+        const adminUser = await query("SELECT id FROM users WHERE role IN ('admin', 'super_admin') ORDER BY id ASC LIMIT 1");
+        const authorId = adminUser.rows.length > 0 ? adminUser.rows[0].id : 1;
+
+        const initialBlogs = [
+            {
+                title: 'Panduan Merawat Lapisan Nano Ceramic Coating Agar Tetap Hydrophobic & Mengkilap',
+                slug: 'panduan-merawat-lapisan-nano-ceramic-coating',
+                excerpt: 'Pelajari teknik mencuci 2 bucket method, pemilihan shampoo pH neutral, dan pantangan mencuci di bawah terik matahari untuk menjaga kilau coating mobil Anda.',
+                image_url: '/uploads/blogs/blog-coating-care.jpg',
+                is_published: true,
+                content: `<h2>Mengapa Perawatan Coating Itu Krusial?</h2>
+<p>Memiliki kendaraan dengan lapisan <strong>Nano Ceramic Coating</strong> memberikan kilau kaca (glass-like shine) yang memukau dan perlindungan cat dari sinar UV, jamur air (waterspot), serta swirl mark halus. Namun, coating bukanlah lapisan anti-gores permanen tanpa perawatan.</p>
+<h3>1. Gunakan Teknik Mencuci 2 Bucket Method</h3>
+<p>Untuk mencegah timbulnya baret halus (swirl mark), gunakan metode dua ember: satu ember berisi larutan <em>Rays Ultra Foam pH-Neutral Shampoo</em>, dan satu ember air bersih untuk membilas busa/sarung tangan cuci sebelum dicelupkan kembali.</p>
+<h3>2. Hindari Shampoo dengan Wax Berat atau Detergen Keras</h3>
+<p>Shampoo berbahan detergen keras dengan pH asam atau basa ekstrim dapat mengikis lapisan silika (SiO2) coating. Selalu gunakan shampoo khusus ber-pH 7 (Netral) seperti yang tersedia di Rays Autocare Store.</p>
+<h3>3. Jangan Mengeringkan Mobil di Bawah Terik Matahari</h3>
+<p>Tetesan air yang mengering karena panas matahari akan meninggalkan kerak mineral kalsium (waterspot). Keringkan selalu di area teduh menggunakan <em>Microfiber Drying Towel</em> dengan daya serap tinggi.</p>`,
+            },
+            {
+                title: '5 Tanda Interior Mobil Anda Butuh Deep Cleaning & Sterilisasi Uap Panas',
+                slug: '5-tanda-interior-mobil-butuh-deep-cleaning',
+                excerpt: 'Mulai dari aroma apek kabin yang tak kunjung hilang, jok kulit mengilap karena minyak tubuh, hingga plafon bernoda. Kenali tanda interior butuh penanganan profesional.',
+                image_url: '/uploads/blogs/blog-interior-detailing.jpg',
+                is_published: true,
+                content: `<h2>Kenyamanan Berkendara Dimulai Dari Kebersihan Kabin</h2>
+<p>Banyak pemilik mobil hanya berfokus pada kilau eksterior, padahal 90% waktu kita dihabiskan di dalam interior kabin. Bakteri, jamur AC, dan tungau jok sering kali menjadi sumber penyakit pernapasan yang tak terlihat.</p>
+<h3>1. Jok Kulit Nampak Mengkilap dan Terasa Licin</h3>
+<p>Banyak yang salah mengira jok kulit yang mengilap itu bagus. Faktanya, kulit asli (Nappa / leather) memiliki tampilan <em>matte</em> elegan. Kilap yang muncul adalah akumulasi minyak keringat tubuh dan debu yang mengeras.</p>
+<h3>2. Bau Apek Saat AC Pertama Kali Dinyalakan</h3>
+<p>Jika hembusan AC pertama mengeluarkan aroma asam atau lembap, evaporator dan filter kabin sudah terinfeksi spora jamur yang membutuhkan <em>Nano Mist Fogging & Ozone Treatment</em>.</p>
+<h3>3. Noda Plafon dan Sela-Sela Konsol Tengah</h3>
+<p>Sisa tumpahan kopi, cipratan minuman manis, atau asap rokok di plafon membutuhkan pembersihan uap panas 140°C tanpa merusak lem kain plafon mobil.</p>`,
+            },
+            {
+                title: 'Paint Protection Film (PPF) vs Ceramic Coating: Mana Pilihan Terbaik untuk Mobil Anda?',
+                slug: 'ppf-vs-ceramic-coating-mana-pilihan-terbaik',
+                excerpt: 'Bingung memilih antara proteksi fisik elastis TPU anti stone-chip (PPF) atau proteksi kimia kilap kristal (Ceramic Coating)? Simak komparasi mendalam kelebihan keduanya.',
+                image_url: '/uploads/blogs/blog-ppf-vs-coating.jpg',
+                is_published: true,
+                content: `<h2>Dilema Terbesar Pemilik Mobil Baru</h2>
+<p>Ketika baru saja menerima mobil impian dari dealer, pertanyaan pertama yang muncul adalah: <em>"Harus pasang PPF atau cukup Ceramic Coating saja?"</em> Keduanya memiliki teknologi dan fungsi perlindungan yang sangat berbeda.</p>
+<h3>Perlindungan Fisik vs Perlindungan Kimia</h3>
+<p><strong>Paint Protection Film (PPF)</strong> adalah lapisan film tebal (180-200 micron) berbahan TPU (Thermoplastic Polyurethane) yang memiliki kemampuan <em>self-healing</em> (sembuh sendiri saat terkena panas) dan melindungi cat dari kerikil jalanan (stone chips) serta goresan benda tajam.</p>
+<p>Sementara <strong>Ceramic Coating</strong> adalah lapisan cair nanoteknologi silika (SiO2) yang meresap ke pori-pori pernis cat, memberikan kilap kaca basah (wet-look), perlindungan sinar UV, dan daya tolak air ekstrem (hydrophobic lotus leaf effect).</p>
+<h3>Kombinasi Terbaik (The Ultimate Protection)</h3>
+<p>Untuk proteksi sempurna, banyak pemilik supercars memilih mengaplikasikan PPF pada area rawan benturan (kap mesin, bumper depan, spion), lalu melapisi seluruh bodi mobil dengan Nano Ceramic Coating untuk kemudahan pencucian rutin.</p>`,
+            },
+        ];
+
+        for (const blog of initialBlogs) {
+            const checkBlog = await query('SELECT id FROM blogs WHERE slug = $1', [blog.slug]);
+            if (checkBlog.rowCount === 0) {
+                await query(
+                    `INSERT INTO blogs (author_id, title, slug, excerpt, content, image_url, is_published)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [authorId, blog.title, blog.slug, blog.excerpt, blog.content, blog.image_url, blog.is_published]
+                );
+                console.log(`   [+] Blog dibuat: "${blog.title}"`);
+            }
+        }
+
         console.log('\n=== [SELESAI] SEEDING DATABASE BERHASIL 100% ===\n');
-        console.log('Kredensial Login Siap Pakai:');
-        console.table([
-            {
-                Role: 'super_admin',
-                Email: usersToSeed[0].email,
-                Password: usersToSeed[0].password,
-            },
-            {
-                Role: 'admin',
-                Email: usersToSeed[1].email,
-                Password: usersToSeed[1].password,
-            },
-            {
-                Role: 'user (customer)',
-                Email: usersToSeed[2].email,
-                Password: usersToSeed[2].password,
-            },
-        ]);
+        console.log('Akun Super Admin, Admin, dan Customer demo siap digunakan.');
         process.exit(0);
     } catch (err: any) {
         console.error('\n[SEEDING ERROR]:', err);

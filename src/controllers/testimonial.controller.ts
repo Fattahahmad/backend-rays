@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/db.ts';
 import type { AuthUser } from '../types/auth.ts';
+import { deleteFileIfExists } from '../utils/file.util.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rays_autocare_secret_key_2026';
 
@@ -26,20 +27,31 @@ function getOptionalUser(req: Request): AuthUser | null {
  */
 export async function getApprovedTestimonials(req: Request, res: Response): Promise<void> {
     try {
-        const limit = parseInt(req.query.limit as string) || 20;
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const offset = (page - 1) * limit;
+
+        const countResult = await query('SELECT COUNT(*) as total FROM testimonials WHERE is_approved = true');
+        const total = parseInt((countResult.rows[0] as any).total, 10) || 0;
 
         const result = await query(
             `SELECT id, customer_name, car_type, avatar_url, rating, content, created_at
              FROM testimonials
              WHERE is_approved = true
              ORDER BY id DESC
-             LIMIT $1`,
-            [limit]
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
         );
 
         res.json({
             success: true,
             data: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('Get approved testimonials error:', error);
@@ -185,13 +197,16 @@ export async function deleteTestimonial(req: Request, res: Response): Promise<vo
     try {
         const id = parseInt(req.params.id as string);
 
-        const check = await query('SELECT id FROM testimonials WHERE id = $1', [id]);
+        const check = await query('SELECT id, avatar_url FROM testimonials WHERE id = $1', [id]);
         if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Ulasan tidak ditemukan.' });
             return;
         }
 
         await query('DELETE FROM testimonials WHERE id = $1', [id]);
+
+        // Bersihkan file avatar dari storage jika ada
+        deleteFileIfExists(check.rows[0].avatar_url);
 
         res.json({
             success: true,

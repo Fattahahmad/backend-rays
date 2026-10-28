@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
     getProfile,
+    getUserDashboard,
     updateProfile,
     listUsers,
     updateUserRole,
@@ -12,6 +13,7 @@ const router = Router();
 
 // Endpoint untuk user yang sedang login
 router.get('/profile', authenticateToken, getProfile);
+router.get('/dashboard', authenticateToken, getUserDashboard);
 router.patch('/profile', authenticateToken, updateProfile);
 
 // Endpoint CMS khusus Admin & Super Admin

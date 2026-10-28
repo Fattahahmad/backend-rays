@@ -34,7 +34,7 @@ const bannerStorage = multer.diskStorage({
 
 const uploadBanner = multer({
     storage: bannerStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 2 * 1024 * 1024 }, // Maksimal 2MB
     fileFilter: (_req, file, cb) => {
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
         if (allowedTypes.includes(file.mimetype)) {
@@ -45,6 +45,24 @@ const uploadBanner = multer({
     },
 });
 
+// Middleware Multer yang fleksibel terhadap nama field (image, file, imageUrl, banner, dll)
+const flexibleUploadBanner = (req: any, res: any, next: any) => {
+    uploadBanner.any()(req, res, (err: any) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, message: 'Ukuran file gambar melebihi batas maksimal 2MB.' });
+            }
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+            req.file = req.files[0];
+        }
+        next();
+    });
+};
+
+const authAdmin = [authenticateToken, requireRoles('admin', 'super_admin')];
+
 // ==========================================
 // PUBLIC ROUTES
 // ==========================================
@@ -52,30 +70,41 @@ const uploadBanner = multer({
 // GET /api/banners -> Mengambil banner aktif untuk carousel/hero website
 router.get('/', getPublicBanners);
 
-// GET /api/banners/:id -> Mengambil detail 1 banner
+// ==========================================
+// ADMIN CMS ROUTES
+// Mendukung pola REST standar (/api/banners) dan pola dengan prefix (/api/banners/admin)
+// ==========================================
+
+// GET Tabel Admin
+router.get('/admin', authAdmin, getAdminBanners);
+router.get('/admin/all', authAdmin, getAdminBanners);
+
+// POST Tambah Banner Baru (Dukung /api/banners dan /api/banners/admin)
+router.post('/admin', authAdmin, flexibleUploadBanner, createBanner);
+router.post('/', authAdmin, flexibleUploadBanner, createBanner);
+
+// PATCH Urutan Banner / Drag & Drop
+router.patch('/admin/reorder', authAdmin, reorderBanners);
+router.patch('/reorder', authAdmin, reorderBanners);
+
+// PATCH Toggle Status Aktif/Nonaktif
+router.patch('/admin/:id/status', authAdmin, toggleBannerStatus);
+router.patch('/:id/status', authAdmin, toggleBannerStatus);
+
+// PUT & PATCH Update Banner (Dukung /api/banners/:id dan /api/banners/admin/:id)
+router.put('/admin/:id', authAdmin, flexibleUploadBanner, updateBanner);
+router.put('/:id', authAdmin, flexibleUploadBanner, updateBanner);
+router.patch('/admin/:id', authAdmin, flexibleUploadBanner, updateBanner);
+router.patch('/:id', authAdmin, flexibleUploadBanner, updateBanner);
+
+// DELETE Hapus Banner (Dukung /api/banners/:id dan /api/banners/admin/:id)
+router.delete('/admin/:id', authAdmin, deleteBanner);
+router.delete('/:id', authAdmin, deleteBanner);
+
+// ==========================================
+// PUBLIC DETAIL ROUTE
+// ==========================================
+// GET /api/banners/:id -> Mengambil detail 1 banner (setelah seluruh rute spesifik)
 router.get('/:id', getBannerById);
-
-// ==========================================
-// ADMIN CMS ROUTES (Harus Login Admin / Super Admin)
-// ==========================================
-router.use('/admin', authenticateToken, requireRoles('admin', 'super_admin'));
-
-// GET /api/banners/admin -> Tabel semua banner untuk admin
-router.get('/admin', getAdminBanners);
-
-// POST /api/banners/admin -> Tambah banner baru (bisa upload file 'image' atau kirim imageUrl)
-router.post('/admin', uploadBanner.single('image'), createBanner);
-
-// PUT /api/banners/admin/:id -> Edit banner (bisa upload file 'image' baru atau update teks)
-router.put('/admin/:id', uploadBanner.single('image'), updateBanner);
-
-// PATCH /api/banners/admin/:id/status -> Toggle status aktif/nonaktif
-router.patch('/admin/:id/status', toggleBannerStatus);
-
-// PATCH /api/banners/admin/reorder -> Ubah urutan slide (drag and drop)
-router.patch('/admin/reorder', reorderBanners);
-
-// DELETE /api/banners/admin/:id -> Hapus banner (soft delete)
-router.delete('/admin/:id', deleteBanner);
 
 export default router;
