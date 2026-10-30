@@ -50,7 +50,7 @@ const DEFAULT_SETTINGS: Record<string, { value: string; category: string; descri
  */
 export async function getPublicSettings(req: Request, res: Response): Promise<void> {
     try {
-        const rows = await query('SELECT key, value FROM settings');
+        const rows = await query('SELECT `key`, value FROM settings');
         const settingsMap: Record<string, string> = {};
 
         // Inisialisasi dari default terlebih dahulu
@@ -80,7 +80,7 @@ export async function getPublicSettings(req: Request, res: Response): Promise<vo
  */
 export async function getAllSettingsAdmin(req: Request, res: Response): Promise<void> {
     try {
-        const rows = await query('SELECT * FROM settings ORDER BY category ASC, key ASC');
+        const rows = await query('SELECT * FROM settings ORDER BY category ASC, `key` ASC');
 
         // Jika tabel masih kosong sama sekali, kembalikan data default yang terstruktur
         let resultList = rows.rows;
@@ -136,15 +136,25 @@ export async function updateSettingsAdmin(req: Request, res: Response): Promise<
             const category = defaultItem ? defaultItem.category : 'general';
             const description = defaultItem ? defaultItem.description : null;
 
-            // Upsert: INSERT ... ON CONFLICT (key) DO UPDATE
-            await query(
-                `INSERT INTO settings (key, value, category, description, updated_at)
-                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-                 ON CONFLICT (key) DO UPDATE
-                 SET value = EXCLUDED.value,
-                     updated_at = CURRENT_TIMESTAMP`,
-                [key, value, category, description]
+            const existing = await query(
+                'SELECT `key` FROM settings WHERE `key` = $1',
+                [key]
             );
+
+            if (existing.rowCount > 0) {
+                await query(
+                    `UPDATE settings
+                     SET value = $1, category = $2, description = $3, updated_at = CURRENT_TIMESTAMP
+                     WHERE \`key\` = $4`,
+                    [value, category, description, key]
+                );
+            } else {
+                await query(
+                    `INSERT INTO settings (\`key\`, value, category, description, updated_at)
+                     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+                    [key, value, category, description]
+                );
+            }
 
             updatedKeys.push(key);
         }
@@ -166,7 +176,7 @@ export async function updateSettingsAdmin(req: Request, res: Response): Promise<
         }
 
         // Ambil data terbaru untuk dikembalikan ke CMS
-        const latestRows = await query('SELECT key, value FROM settings');
+        const latestRows = await query('SELECT `key`, value FROM settings');
         const updatedMap: Record<string, string> = {};
         for (const r of latestRows.rows) {
             updatedMap[r.key] = r.value;

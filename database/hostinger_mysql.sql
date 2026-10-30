@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS service_portfolios (
     caption TEXT
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_service_portfolios_service_id ON service_portfolios(service_id);
+CREATE INDEX IF NOT EXISTS idx_service_portfolios_service_id ON service_portfolios(service_id);
 
 -- Source: 1789969021246_create-categories-table.sql
 CREATE TABLE IF NOT EXISTS categories (
@@ -70,8 +70,8 @@ CREATE TABLE IF NOT EXISTS products (
     deleted_at TIMESTAMP -- Soft delete untuk menjaga integritas transaksi
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_products_category_id ON products(category_id);
-CREATE INDEX idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 
 -- Source: 1789969025115_create-product-images-table.sql
 CREATE TABLE IF NOT EXISTS product_images (
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS product_images (
     is_primary BOOLEAN NOT NULL DEFAULT FALSE
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_product_images_product_id ON product_images(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images(product_id);
 
 -- Source: 1789969027042_create-orders-table.sql
 CREATE TABLE IF NOT EXISTS orders (
@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_orders_order_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);
 
 -- Source: 1789969028853_create-order-items-table.sql
 CREATE TABLE IF NOT EXISTS order_items (
@@ -113,8 +113,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     price_at_checkout INT NOT NULL -- Mengunci harga saat transaksi terjadi
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
 
 -- Source: 1789969030657_create-payments-table.sql
 CREATE TABLE IF NOT EXISTS payments (
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS payments (
     paid_at TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_payments_order_id ON payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(order_id);
 
 -- Source: 1789969032529_create-coupons-table.sql
 CREATE TABLE IF NOT EXISTS coupons (
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS testimonials (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_testimonials_user_id ON testimonials(user_id);
+CREATE INDEX IF NOT EXISTS idx_testimonials_user_id ON testimonials(user_id);
 
 -- Source: 1789969036111_create-blogs-table.sql
 CREATE TABLE IF NOT EXISTS blogs (
@@ -171,8 +171,8 @@ CREATE TABLE IF NOT EXISTS blogs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_blogs_author_id ON blogs(author_id);
-CREATE INDEX idx_blogs_slug ON blogs(slug);
+CREATE INDEX IF NOT EXISTS idx_blogs_author_id ON blogs(author_id);
+CREATE INDEX IF NOT EXISTS idx_blogs_slug ON blogs(slug);
 
 -- Source: 1789969037855_create-conversations-table.sql
 CREATE TABLE IF NOT EXISTS conversations (
@@ -182,8 +182,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     status ENUM('open', 'resolved') NOT NULL DEFAULT 'open'
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_phone_number ON conversations(phone_number);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_phone_number ON conversations(phone_number);
 
 -- Source: 1789969039557_create-messages-table.sql
 CREATE TABLE IF NOT EXISTS messages (
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 
 -- Source: 1789975478930_create-otps-table.sql
 CREATE TABLE IF NOT EXISTS otps (
@@ -208,8 +208,8 @@ CREATE TABLE IF NOT EXISTS otps (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_otps_email ON otps(email);
-CREATE INDEX idx_otps_code ON otps(otp_code);
+CREATE INDEX IF NOT EXISTS idx_otps_email ON otps(email);
+CREATE INDEX IF NOT EXISTS idx_otps_code ON otps(otp_code);
 
 -- Source: 1789975500000_create-faqs-table.sql
 CREATE TABLE IF NOT EXISTS faqs (
@@ -223,8 +223,8 @@ CREATE TABLE IF NOT EXISTS faqs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_faqs_category ON faqs(category);
-CREATE INDEX idx_faqs_order ON faqs(order_index);
+CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category);
+CREATE INDEX IF NOT EXISTS idx_faqs_order ON faqs(order_index);
 
 -- Source: 1789975520000_create-audit-logs-table.sql
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -240,10 +240,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- Source: 1790100000000_enhance-chat-and-service-tables.sql
 -- 1. Penyesuaian Tabel Conversations untuk Web Live Chat
@@ -267,7 +267,7 @@ ALTER TABLE service_portfolios ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEF
 
 -- Source: 1790100100000_create-settings-table.sql
 CREATE TABLE IF NOT EXISTS settings (
-    key VARCHAR(100) PRIMARY KEY,
+    `key` VARCHAR(100) PRIMARY KEY,
     value TEXT NOT NULL,
     category VARCHAR(50) NOT NULL DEFAULT 'general',
     description VARCHAR(255),
@@ -339,9 +339,9 @@ CREATE TABLE IF NOT EXISTS article_media (
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_article_media_article_id ON article_media(article_id);
-CREATE INDEX idx_article_media_created_at ON article_media(created_at);
-CREATE INDEX idx_blogs_status ON blogs(status);
-CREATE INDEX idx_blogs_category ON blogs(category);
+CREATE INDEX IF NOT EXISTS idx_article_media_article_id ON article_media(article_id);
+CREATE INDEX IF NOT EXISTS idx_article_media_created_at ON article_media(created_at);
+CREATE INDEX IF NOT EXISTS idx_blogs_status ON blogs(status);
+CREATE INDEX IF NOT EXISTS idx_blogs_category ON blogs(category);
 
 SET FOREIGN_KEY_CHECKS = 1;
