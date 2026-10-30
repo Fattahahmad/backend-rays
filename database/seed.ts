@@ -289,10 +289,10 @@ async function seed() {
         ];
 
         for (const s of settingsToSeed) {
-            const check = await query('SELECT key FROM settings WHERE key = $1', [s.key]);
+            const check = await query('SELECT `key` FROM settings WHERE `key` = $1', [s.key]);
             if (check.rowCount === 0) {
                 await query(
-                    `INSERT INTO settings (key, value, category, description, updated_at)
+                    `INSERT INTO settings (\`key\`, value, category, description, updated_at)
                      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
                     [s.key, s.value, s.category, s.description]
                 );

@@ -628,7 +628,7 @@ export async function getUserDashboard(req: Request, res: Response): Promise<voi
         }
 
         // 5. Pengaturan Kontak CS (WhatsApp)
-        const waSetting = await query("SELECT value FROM settings WHERE key = 'whatsapp_number' LIMIT 1");
+        const waSetting = await query("SELECT value FROM settings WHERE `key` = 'whatsapp_number' LIMIT 1");
         const whatsappNumber = waSetting.rows[0]?.value || '6281234567890';
 
         res.json({

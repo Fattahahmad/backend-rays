@@ -267,7 +267,7 @@ ALTER TABLE service_portfolios ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEF
 
 -- Source: 1790100100000_create-settings-table.sql
 CREATE TABLE IF NOT EXISTS settings (
-    key VARCHAR(100) PRIMARY KEY,
+    `key` VARCHAR(100) PRIMARY KEY,
     value TEXT NOT NULL,
     category VARCHAR(50) NOT NULL DEFAULT 'general',
     description VARCHAR(255),

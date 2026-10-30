@@ -82,7 +82,10 @@ export async function query<T extends pg.QueryResultRow = any>(sql: string, para
     }
 
     if (pgPool) {
-        const result = await pgPool.query<T>(sql, params);
+        // Backticks are used for MySQL reserved identifiers (for example `key`).
+        // Convert them to PostgreSQL identifier quotes when using PostgreSQL.
+        const pgSql = sql.replace(/`([^`]+)`/g, '"$1"');
+        const result = await pgPool.query<T>(pgSql, params);
         return {
             rows: result.rows,
             rowCount: result.rowCount ?? 0,
