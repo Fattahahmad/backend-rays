@@ -1,6 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import { query } from '../config/db.ts';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'rays_autocare_secret_key_2026';
 
 let io: SocketIOServer | null = null;
 
@@ -22,12 +25,27 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
 
         /**
          * 1. Admin bergabung ke room khusus 'admin_support'
-         * Digunakan untuk menerima notifikasi pesan masuk dari seluruh pengunjung
+         * Wajib mengirim token JWT yang valid dengan role admin / super_admin
          */
-        socket.on('admin:join_dashboard', () => {
-            socket.join('admin_support');
-            if (process.env.NODE_ENV !== 'production') {
-                console.log(`[Socket.io] Admin joined room: admin_support (Socket ID: ${socket.id})`);
+        socket.on('admin:join_dashboard', (data?: { token?: string }) => {
+            const token = data?.token || (socket.handshake.auth?.token as string);
+            if (!token) {
+                socket.emit('server:error', { message: 'Autentikasi admin diperlukan untuk mengakses dashboard support.' });
+                return;
+            }
+
+            try {
+                const decoded: any = jwt.verify(token, JWT_SECRET);
+                if (!['admin', 'super_admin'].includes(decoded.role)) {
+                    socket.emit('server:error', { message: 'Akses ditolak: Hanya admin yang berhak memantau live support.' });
+                    return;
+                }
+                socket.join('admin_support');
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log(`[Socket.io] Admin ${decoded.name || decoded.email} joined room: admin_support (Socket ID: ${socket.id})`);
+                }
+            } catch {
+                socket.emit('server:error', { message: 'Token admin tidak valid atau sudah kedaluwarsa.' });
             }
         });
 

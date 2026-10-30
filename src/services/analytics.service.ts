@@ -60,8 +60,11 @@ export function formatDuration(seconds: number): string {
     return `${mins} menit ${secs} detik`;
 }
 
+let cachedClient: BetaAnalyticsDataClient | null = null;
+let clientInitialized = false;
+
 /**
- * Helper untuk inisialisasi client Google Analytics Data API
+ * Helper untuk inisialisasi client Google Analytics Data API (Singleton)
  */
 function getAnalyticsClient(): { client: BetaAnalyticsDataClient | null; propertyId: string | null } {
     const propertyId = process.env.GA4_PROPERTY_ID || null;
@@ -72,18 +75,22 @@ function getAnalyticsClient(): { client: BetaAnalyticsDataClient | null; propert
         return { client: null, propertyId: null };
     }
 
-    try {
-        const client = new BetaAnalyticsDataClient({
-            credentials: {
-                client_email: clientEmail,
-                private_key: privateKey.replace(/\\n/g, '\n'),
-            },
-        });
-        return { client, propertyId };
-    } catch (err: any) {
-        console.error('[GA4 INIT ERROR] Gagal menginisialisasi Google Analytics client:', err.message);
-        return { client: null, propertyId: null };
+    if (!clientInitialized) {
+        clientInitialized = true;
+        try {
+            cachedClient = new BetaAnalyticsDataClient({
+                credentials: {
+                    client_email: clientEmail,
+                    private_key: privateKey.replace(/\\n/g, '\n'),
+                },
+            });
+        } catch (err: any) {
+            console.error('[GA4 INIT ERROR] Gagal menginisialisasi Google Analytics client:', err.message);
+            cachedClient = null;
+        }
     }
+
+    return { client: cachedClient, propertyId };
 }
 
 /**

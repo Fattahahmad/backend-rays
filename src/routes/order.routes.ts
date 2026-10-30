@@ -3,6 +3,7 @@ import {
     checkoutOrder,
     getMyOrders,
     getOrderByNumber,
+    cancelMyOrder,
     listAllOrdersAdmin,
     updateOrderShipping,
     updateOrderStatus,
@@ -16,6 +17,7 @@ const router = Router();
 // ==========================================
 router.post('/checkout', authenticateToken, checkoutOrder);
 router.get('/my-orders', authenticateToken, getMyOrders);
+router.patch('/:orderNumber/cancel', authenticateToken, cancelMyOrder);
 
 // ==========================================
 // Admin CMS Order Routes (Admin / Super Admin)

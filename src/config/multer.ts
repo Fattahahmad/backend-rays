@@ -1,39 +1,28 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-const ALLOWED_MIME_TYPES = [
+export const ALLOWED_MIME_TYPES = [
     'image/jpeg',
     'image/png',
     'image/webp',
     'image/jpg',
+    'image/gif',
+    'image/bmp',
+    'image/tiff',
+    'image/heic',
+    'image/heif',
+    'image/avif',
 ];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-const storage = multer.diskStorage({
-    destination: (req, _file, cb) => {
-        const folder = (req.query.folder as string) || 'general';
-        const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_\-]/g, '');
-        const targetDir = path.join(process.cwd(), 'uploads', sanitizedFolder);
+export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB (Diperketat untuk efisiensi penyimpanan & bandwidth)
 
-        if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-        }
+// Menggunakan memoryStorage agar file buffer dapat langsung diproses & dikonversi ke WebP oleh sharp
+const storage = multer.memoryStorage();
 
-        cb(null, targetDir);
-    },
-    filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        cb(null, `${uniqueSuffix}${ext}`);
-    },
-});
-
-const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
         cb(null, true);
     } else {
-        cb(new Error('Format file tidak didukung! Hanya diperbolehkan format gambar: JPG, JPEG, PNG, dan WEBP.'));
+        cb(new Error('Format file tidak didukung! Hanya diperbolehkan format gambar asli: JPG, JPEG, PNG, WEBP, GIF, BMP, TIFF, HEIC, AVIF.'));
     }
 };
 

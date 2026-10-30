@@ -4,7 +4,13 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { query } from '../config/db.ts';
 import { recordAuditLog } from '../services/audit.service.ts';
-import { sendOtpEmail } from '../services/mail.service.ts';
+import { sendOtpEmail, sendForgotPasswordEmail } from '../services/mail.service.ts';
+import {
+    addOrUpdateDeviceSession,
+    rotateDeviceSession,
+    removeDeviceSessionByToken,
+    parseDeviceSessions,
+} from '../utils/device.util.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rays_autocare_secret_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Access token berlaku 15 menit
@@ -22,7 +28,11 @@ function generateTokens(user: { id: number; email: string; role: string; name?: 
         { expiresIn: JWT_EXPIRES_IN as any }
     );
     const refreshToken = jwt.sign(
-        { id: user.id, email: user.email },
+        {
+            id: user.id,
+            email: user.email,
+            jti: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        },
         REFRESH_TOKEN_SECRET,
         { expiresIn: REFRESH_TOKEN_EXPIRES_IN as any }
     );
@@ -31,6 +41,14 @@ function generateTokens(user: { id: number; email: string; role: string; name?: 
 
 function generateToken(user: { id: number; email: string; role: string; name?: string }): string {
     return generateTokens(user).accessToken;
+}
+
+/**
+ * Multi-device Session Helper:
+ * Mengambil daftar token valid dari JSON array sesi di kolom refresh_token
+ */
+function parseRefreshTokens(raw: string | null): string[] {
+    return parseDeviceSessions(raw).map((s) => s.token);
 }
 
 /**
@@ -140,13 +158,14 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
         // 3. Update status email_verified pada tabel users
         await query('UPDATE users SET is_email_verified = true WHERE email = $1', [normalizedEmail]);
 
-        const userResult = await query('SELECT id, name, email, role, phone_number, avatar_url FROM users WHERE email = $1', [normalizedEmail]);
+        const userResult = await query('SELECT id, name, email, role, phone_number, avatar_url, refresh_token FROM users WHERE email = $1', [normalizedEmail]);
         const user = userResult.rows[0];
 
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
 
-        // Simpan refresh token ke database
-        await query('UPDATE users SET refresh_token = $1 WHERE id = $2', [newRefreshToken, user.id]);
+        // Simpan refresh token & metadata sesi perangkat ke database (multi-device session support)
+        const updatedTokens = addOrUpdateDeviceSession(user.refresh_token, newRefreshToken, req);
+        await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [updatedTokens, user.id]);
 
         res.json({
             success: true,
@@ -172,11 +191,13 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
 
 /**
  * POST /api/auth/resend-otp
- * Mengirim ulang kode OTP
+ * Mengirim ulang kode OTP (Mendukung type: 'registration' atau 'forgot_password')
  */
 export async function resendOtp(req: Request, res: Response): Promise<void> {
     try {
         const { email } = req.body;
+        const type = req.body.type === 'forgot_password' ? 'forgot_password' : 'registration';
+
         if (!email) {
             res.status(400).json({ success: false, message: 'Email wajib diisi.' });
             return;
@@ -184,7 +205,7 @@ export async function resendOtp(req: Request, res: Response): Promise<void> {
 
         const normalizedEmail = email.trim().toLowerCase();
 
-        const userCheck = await query('SELECT * FROM users WHERE email = $1', [normalizedEmail]);
+        const userCheck = await query('SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL', [normalizedEmail]);
         if (userCheck.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Email tidak ditemukan.' });
             return;
@@ -193,15 +214,24 @@ export async function resendOtp(req: Request, res: Response): Promise<void> {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+        // Invalidate OTP aktif sebelumnya untuk tipe ini
         await query(
-            'INSERT INTO otps (email, otp_code, type, expires_at) VALUES ($1, $2, $3, $4)',
-            [normalizedEmail, otpCode, 'registration', expiresAt]
+            'UPDATE otps SET is_used = true WHERE email = $1 AND type = $2 AND is_used = false',
+            [normalizedEmail, type]
         );
 
-        console.log(`[RESEND OTP] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        await query(
+            'INSERT INTO otps (email, otp_code, type, expires_at) VALUES ($1, $2, $3, $4)',
+            [normalizedEmail, otpCode, type, expiresAt]
+        );
 
-        // Kirim email OTP via Nodemailer (Mailtrap di Dev / Hostinger di Prod)
-        await sendOtpEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
+        console.log(`[RESEND OTP ${type.toUpperCase()}] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+
+        if (type === 'forgot_password') {
+            await sendForgotPasswordEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
+        } else {
+            await sendOtpEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
+        }
 
         res.json({
             success: true,
@@ -229,7 +259,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
         const normalizedEmail = email.trim().toLowerCase();
 
-        const userResult = await query('SELECT * FROM users WHERE email = $1', [normalizedEmail]);
+        const userResult = await query('SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL', [normalizedEmail]);
         if (userResult.rowCount === 0) {
             res.status(400).json({ success: false, message: 'Email atau password salah.' });
             return;
@@ -241,7 +271,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         if (!user.password) {
             res.status(400).json({
                 success: false,
-                message: 'Akun ini terdaftar via Google. Silakan login menggunakan tombol Google.',
+                message: 'Akun ini terdaftar via Google. Silakan login menggunakan tombol Google atau gunakan fitur Lupa Password.',
             });
             return;
         }
@@ -266,8 +296,9 @@ export async function login(req: Request, res: Response): Promise<void> {
 
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
 
-        // Simpan refresh token ke database
-        await query('UPDATE users SET refresh_token = $1 WHERE id = $2', [newRefreshToken, user.id]);
+        // Simpan refresh token & metadata sesi perangkat ke database (multi-device support)
+        const updatedTokens = addOrUpdateDeviceSession(user.refresh_token, newRefreshToken, req);
+        await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [updatedTokens, user.id]);
 
         // Catat audit log jika yang login adalah admin / super_admin
         if (['admin', 'super_admin'].includes(user.role)) {
@@ -366,8 +397,6 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
             user = newUserResult.rows[0];
         }
 
-        const token = generateToken(user);
-
         // Catat audit log jika yang login adalah admin / super_admin
         if (['admin', 'super_admin'].includes(user.role)) {
             recordAuditLog({
@@ -383,8 +412,9 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
 
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
 
-        // Simpan refresh token ke database
-        await query('UPDATE users SET refresh_token = $1 WHERE id = $2', [newRefreshToken, user.id]);
+        // Simpan refresh token & metadata sesi perangkat ke database (multi-device support)
+        const updatedTokens = addOrUpdateDeviceSession(user.refresh_token, newRefreshToken, req);
+        await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [updatedTokens, user.id]);
 
         res.json({
             success: true,
@@ -411,6 +441,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
 /**
  * POST /api/auth/refresh-token
  * Meminta Access Token baru secara otomatis menggunakan Refresh Token yang sah
+ * Mendukung sesi multi-perangkat (multi-device token rotation)
  */
 export async function refreshToken(req: Request, res: Response): Promise<void> {
     try {
@@ -446,11 +477,12 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
 
         const user = userResult.rows[0];
 
-        // Jika refresh token di database kosong (sudah logout) atau tidak cocok
-        if (!user.refresh_token || user.refresh_token !== tokenFromReq) {
+        // Validasi keberadaan token aktif untuk multi-device
+        const activeTokens = parseRefreshTokens(user.refresh_token);
+        if (!activeTokens.includes(tokenFromReq)) {
             res.status(403).json({
                 success: false,
-                message: 'Sesi login telah berakhir atau Anda telah logout di perangkat lain. Silakan login kembali.',
+                message: 'Sesi login telah berakhir atau Anda telah logout di perangkat ini. Silakan login kembali.',
             });
             return;
         }
@@ -458,8 +490,9 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
         // 3. Terbitkan access token baru & refresh token baru (token rotation)
         const tokens = generateTokens(user);
 
-        // Update refresh token baru ke database
-        await query('UPDATE users SET refresh_token = $1 WHERE id = $2', [tokens.refreshToken, user.id]);
+        // Rotasi token & perbarui waktu aktif sesi perangkat ini
+        const updatedTokens = rotateDeviceSession(user.refresh_token, tokenFromReq, tokens.refreshToken, req);
+        await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [updatedTokens, user.id]);
 
         res.json({
             success: true,
@@ -485,13 +518,12 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
 /**
  * POST /api/auth/logout
  * Menghandle proses logout user:
- * 1. Menghapus refresh token dari database user (mematikan sesi seketika)
+ * 1. Menghapus sesi refresh token dari database user (hanya sesi perangkat ini jika token disertakan)
  * 2. Mencatat audit log aktivitas logout
  * 3. Membersihkan HTTP cookies jika diset
  */
 export async function logout(req: Request, res: Response): Promise<void> {
     try {
-        // Ekstrak user opsional jika token dikirim di header
         const authHeader = req.headers.authorization;
         const token = authHeader && authHeader.split(' ')[1];
         let authUser: any = null;
@@ -504,9 +536,21 @@ export async function logout(req: Request, res: Response): Promise<void> {
             }
         }
 
-        // Hapus refresh token dari database user agar sesi mati total
+        const incomingRefreshToken = req.body?.refreshToken || req.headers['x-refresh-token'];
+
+        // Jika ada user ID terautentikasi
         if (authUser?.id) {
-            await query('UPDATE users SET refresh_token = NULL WHERE id = $1', [authUser.id]);
+            if (incomingRefreshToken) {
+                // Hapus token perangkat ini saja agar perangkat lain tidak terputus
+                const uRes = await query('SELECT refresh_token FROM users WHERE id = $1', [authUser.id]);
+                if (uRes.rowCount > 0) {
+                    const newTokens = removeDeviceSessionByToken(uRes.rows[0].refresh_token, incomingRefreshToken);
+                    await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newTokens, authUser.id]);
+                }
+            } else {
+                // Logout total semua perangkat jika tidak ada refresh token spesifik yang dikirimkan
+                await query('UPDATE users SET refresh_token = NULL WHERE id = $1', [authUser.id]);
+            }
 
             recordAuditLog({
                 userId: authUser.id,
@@ -517,12 +561,20 @@ export async function logout(req: Request, res: Response): Promise<void> {
                 details: { email: authUser.email, role: authUser.role },
                 req,
             });
-        }
-
-        // Jika request menyertakan refreshToken di body, bersihkan juga
-        const incomingRefreshToken = req.body?.refreshToken;
-        if (incomingRefreshToken) {
-            await query('UPDATE users SET refresh_token = NULL WHERE refresh_token = $1', [incomingRefreshToken]);
+        } else if (incomingRefreshToken) {
+            // Jika access token sudah expired tetapi user menyertakan refreshToken
+            try {
+                const decoded: any = jwt.verify(incomingRefreshToken, REFRESH_TOKEN_SECRET);
+                if (decoded?.id) {
+                    const uRes = await query('SELECT refresh_token FROM users WHERE id = $1', [decoded.id]);
+                    if (uRes.rowCount > 0) {
+                        const newTokens = removeDeviceSessionByToken(uRes.rows[0].refresh_token, incomingRefreshToken);
+                        await query('UPDATE users SET refresh_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newTokens, decoded.id]);
+                    }
+                }
+            } catch {
+                // Abaikan jika token rusak
+            }
         }
 
         // Hapus auth cookies jika digunakan
@@ -537,5 +589,169 @@ export async function logout(req: Request, res: Response): Promise<void> {
     } catch (error) {
         console.error('Logout error:', error);
         res.status(500).json({ success: false, message: 'Gagal memproses logout.' });
+    }
+}
+
+/**
+ * POST /api/auth/forgot-password
+ * Mengirimkan kode OTP 6 digit untuk reset kata sandi ke email pengguna
+ */
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            res.status(400).json({ success: false, message: 'Email wajib diisi.' });
+            return;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Cek keberadaan user
+        const userResult = await query('SELECT id, name, email FROM users WHERE email = $1 AND deleted_at IS NULL', [normalizedEmail]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ success: false, message: 'Email tidak ditemukan di sistem.' });
+            return;
+        }
+
+        const user = userResult.rows[0];
+
+        // 2. Nonaktifkan OTP forgot_password sebelumnya yang belum digunakan
+        await query(
+            'UPDATE otps SET is_used = true WHERE email = $1 AND type = $2 AND is_used = false',
+            [normalizedEmail, 'forgot_password']
+        );
+
+        // 3. Generate kode OTP 6 digit baru
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
+
+        await query(
+            'INSERT INTO otps (email, otp_code, type, expires_at) VALUES ($1, $2, $3, $4)',
+            [normalizedEmail, otpCode, 'forgot_password', expiresAt]
+        );
+
+        console.log(`[FORGOT PASSWORD OTP] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+
+        // Kirim email notifikasi OTP reset kata sandi
+        await sendForgotPasswordEmail(normalizedEmail, otpCode, user.name);
+
+        res.json({
+            success: true,
+            message: 'Kode OTP untuk reset kata sandi telah dikirimkan ke email Anda.',
+            data: {
+                email: normalizedEmail,
+                debugOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
+            },
+        });
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ success: false, message: 'Gagal memproses permintaan reset password.' });
+    }
+}
+
+/**
+ * POST /api/auth/verify-reset-otp
+ * Memvalidasi kode OTP sebelum user menginput password baru (opsional untuk step-by-step UI)
+ */
+export async function verifyResetOtp(req: Request, res: Response): Promise<void> {
+    try {
+        const { email } = req.body;
+        const otpCode = req.body.otpCode || req.body.otp;
+
+        if (!email || !otpCode) {
+            res.status(400).json({ success: false, message: 'Email dan kode OTP wajib diisi.' });
+            return;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const otpResult = await query(
+            'SELECT id FROM otps WHERE email = $1 AND otp_code = $2 AND type = $3 AND is_used = false AND expires_at > CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1',
+            [normalizedEmail, otpCode, 'forgot_password']
+        );
+
+        if (otpResult.rowCount === 0) {
+            res.status(400).json({
+                success: false,
+                message: 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            message: 'Kode OTP valid. Silakan lanjutkan memasukkan kata sandi baru.',
+        });
+    } catch (error) {
+        console.error('Verify reset OTP error:', error);
+        res.status(500).json({ success: false, message: 'Gagal memverifikasi kode OTP.' });
+    }
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Memvalidasi OTP dan menyimpan password baru
+ */
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+        const { email, password } = req.body;
+        const otpCode = req.body.otpCode || req.body.otp;
+
+        if (!email || !otpCode || !password) {
+            res.status(400).json({ success: false, message: 'Email, kode OTP, dan kata sandi baru wajib diisi.' });
+            return;
+        }
+
+        if (password.length < 6) {
+            res.status(400).json({ success: false, message: 'Kata sandi minimal terdiri dari 6 karakter.' });
+            return;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Validasi OTP forgot_password yang masih aktif
+        const otpResult = await query(
+            'SELECT id FROM otps WHERE email = $1 AND otp_code = $2 AND type = $3 AND is_used = false AND expires_at > CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1',
+            [normalizedEmail, otpCode, 'forgot_password']
+        );
+
+        if (otpResult.rowCount === 0) {
+            res.status(400).json({
+                success: false,
+                message: 'Kode OTP tidak valid atau sudah kedaluwarsa. Silakan minta kode baru.',
+            });
+            return;
+        }
+
+        // 2. Hash password baru
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 3. Update password user, reset refresh token (mematikan semua sesi lama demi keamanan), dan set is_email_verified = true
+        await query(
+            'UPDATE users SET password = $1, refresh_token = NULL, is_email_verified = true WHERE email = $2',
+            [hashedPassword, normalizedEmail]
+        );
+
+        // 4. Tandai OTP sudah digunakan
+        await query('UPDATE otps SET is_used = true WHERE id = $1', [otpResult.rows[0].id]);
+
+        recordAuditLog({
+            userId: 0,
+            action: 'RESET_PASSWORD',
+            entityType: 'auth',
+            entityId: 0,
+            description: `Kata sandi akun ${normalizedEmail} berhasil direset via OTP`,
+            details: { email: normalizedEmail },
+            req,
+        });
+
+        res.json({
+            success: true,
+            message: 'Kata sandi berhasil direset! Silakan login menggunakan kata sandi baru Anda.',
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ success: false, message: 'Gagal mereset kata sandi.' });
     }
 }

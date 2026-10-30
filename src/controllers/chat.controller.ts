@@ -1,6 +1,44 @@
 import type { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { query } from '../config/db.ts';
 import { getIo } from '../services/socket.service.ts';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'rays_autocare_secret_key_2026';
+
+/**
+ * Helper untuk memvalidasi hak akses percakapan (Mencegah IDOR)
+ */
+function checkConversationAccess(req: Request, conversation: any): boolean {
+    // 1. Admin & Super Admin selalu diizinkan
+    if (req.user && ['admin', 'super_admin'].includes(req.user.role)) {
+        return true;
+    }
+
+    // 2. Jika user terdaftar dan ID user cocok
+    if (req.user && conversation.user_id && req.user.id === conversation.user_id) {
+        return true;
+    }
+
+    // 3. Jika user terdaftar dan email cocok
+    if (req.user && conversation.guest_email && req.user.email.toLowerCase() === conversation.guest_email.toLowerCase()) {
+        return true;
+    }
+
+    // 4. Jika menyertakan chat_token yang sah untuk percakapan ini
+    const token = (req.headers['x-chat-token'] as string) || (req.query.chat_token as string) || (req.body?.chat_token as string);
+    if (token) {
+        try {
+            const decoded: any = jwt.verify(token, JWT_SECRET);
+            if (decoded && decoded.conversationId === conversation.id) {
+                return true;
+            }
+        } catch {
+            return false;
+        }
+    }
+
+    return false;
+}
 
 /**
  * POST /api/chat/start (Public / Authenticated)
@@ -18,24 +56,38 @@ export async function startConversation(req: Request, res: Response): Promise<vo
         // 1. Buat percakapan baru di database
         const insertConv = await query(
             `INSERT INTO conversations (user_id, guest_name, guest_email, phone_number, status, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, 'open', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-             RETURNING *`,
+             VALUES ($1, $2, $3, $4, 'open', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [userId, effectiveName, effectiveEmail, effectivePhone]
         );
 
-        const conversation = insertConv.rows[0];
+        let conversationId = insertConv.rows[0]?.id;
+        if (!conversationId) {
+            const lastConv = await query('SELECT * FROM conversations ORDER BY id DESC LIMIT 1');
+            conversationId = lastConv.rows[0].id;
+        }
+
+        const convFetch = await query('SELECT * FROM conversations WHERE id = $1', [conversationId]);
+        const conversation = convFetch.rows[0];
+
         let savedInitialMessage = null;
 
         // 2. Jika ada pesan pembuka pertama, simpan ke tabel messages
         if (initial_message && initial_message.trim()) {
-            const insertMsg = await query(
+            await query(
                 `INSERT INTO messages (conversation_id, sender_type, source, message_text, is_read)
-                 VALUES ($1, 'customer', 'web_chat', $2, false)
-                 RETURNING *`,
+                 VALUES ($1, 'customer', 'web_chat', $2, false)`,
                 [conversation.id, initial_message.trim()]
             );
-            savedInitialMessage = insertMsg.rows[0];
+            const msgFetch = await query('SELECT * FROM messages WHERE conversation_id = $1 ORDER BY id DESC LIMIT 1', [conversation.id]);
+            savedInitialMessage = msgFetch.rows[0];
         }
+
+        // Terbitkan token akses obrolan khusus sesi ini (untuk keamanan tamu)
+        const chatToken = jwt.sign(
+            { conversationId: conversation.id, email: effectiveEmail },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
         // 3. Beri notifikasi ke dashboard Admin CMS via Socket.io
         const io = getIo();
@@ -57,6 +109,7 @@ export async function startConversation(req: Request, res: Response): Promise<vo
             data: {
                 conversation,
                 initial_message: savedInitialMessage,
+                chat_token: chatToken,
             },
         });
     } catch (error: any) {
@@ -67,7 +120,7 @@ export async function startConversation(req: Request, res: Response): Promise<vo
 
 /**
  * GET /api/chat/conversations/:id/messages (Public / Customer / Admin)
- * Mengambil riwayat pesan pada satu sesi percakapan tertentu
+ * Mengambil riwayat pesan pada satu sesi percakapan tertentu (Terlindungi dari IDOR)
  */
 export async function getConversationMessages(req: Request, res: Response): Promise<void> {
     try {
@@ -91,6 +144,17 @@ export async function getConversationMessages(req: Request, res: Response): Prom
             return;
         }
 
+        const conversation = convRes.rows[0];
+
+        // Validasi Otorisasi (Cegah IDOR membaca chat orang lain)
+        if (!checkConversationAccess(req, conversation)) {
+            res.status(403).json({
+                success: false,
+                message: 'Akses ditolak: Anda tidak memiliki izin untuk melihat riwayat percakapan ini.',
+            });
+            return;
+        }
+
         const page = parseInt(req.query.page as string, 10) || 1;
         const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : (req.query.all === 'true' ? 1000 : 50);
         const offset = (page - 1) * limit;
@@ -107,7 +171,7 @@ export async function getConversationMessages(req: Request, res: Response): Prom
         res.json({
             success: true,
             data: {
-                conversation: convRes.rows[0],
+                conversation,
                 messages: messagesRes.rows,
             },
             pagination: {
@@ -125,7 +189,7 @@ export async function getConversationMessages(req: Request, res: Response): Prom
 
 /**
  * POST /api/chat/conversations/:id/messages (Public / Customer / Admin)
- * HTTP Fallback untuk mengirim pesan (jika websocket client sedang putus/reconnecting)
+ * HTTP Fallback untuk mengirim pesan (Terlindungi dari Privilege Escalation)
  */
 export async function sendMessageHttp(req: Request, res: Response): Promise<void> {
     try {
@@ -137,17 +201,48 @@ export async function sendMessageHttp(req: Request, res: Response): Promise<void
             return;
         }
 
-        const validSender = sender_type === 'admin' ? 'admin' : 'customer';
+        const convRes = await query('SELECT * FROM conversations WHERE id = $1', [conversationId]);
+        if (convRes.rowCount === 0) {
+            res.status(404).json({ success: false, message: 'Sesi percakapan tidak ditemukan.' });
+            return;
+        }
+
+        const conversation = convRes.rows[0];
+
+        // Validasi Otorisasi (Cegah IDOR mengirim pesan ke obrolan milik orang lain)
+        if (!checkConversationAccess(req, conversation)) {
+            res.status(403).json({
+                success: false,
+                message: 'Akses ditolak: Anda tidak memiliki izin mengirim pesan ke percakapan ini.',
+            });
+            return;
+        }
+
+        // Cegah Privilege Escalation: Hanya admin terautentikasi yang boleh mengaku sebagai 'admin'
+        let validSender: 'customer' | 'admin' = 'customer';
+        if (sender_type === 'admin') {
+            if (!req.user || !['admin', 'super_admin'].includes(req.user.role)) {
+                res.status(403).json({
+                    success: false,
+                    message: 'Akses ditolak: Anda tidak memiliki wewenang untuk mengirim pesan sebagai staf admin.',
+                });
+                return;
+            }
+            validSender = 'admin';
+        }
 
         // 1. Simpan ke database
-        const insertMsg = await query(
+        await query(
             `INSERT INTO messages (conversation_id, sender_type, source, message_text, is_read)
-             VALUES ($1, $2, 'web_chat', $3, false)
-             RETURNING *`,
+             VALUES ($1, $2, 'web_chat', $3, false)`,
             [conversationId, validSender, message_text.trim()]
         );
 
-        const savedMessage = insertMsg.rows[0];
+        const fetchSaved = await query(
+            'SELECT * FROM messages WHERE conversation_id = $1 ORDER BY id DESC LIMIT 1',
+            [conversationId]
+        );
+        const savedMessage = fetchSaved.rows[0];
 
         // 2. Perbarui waktu percakapan
         await query(
@@ -284,17 +379,19 @@ export async function updateConversationStatus(req: Request, res: Response): Pro
             return;
         }
 
-        const updateRes = await query(
-            'UPDATE conversations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-            [status, id]
-        );
-
-        if (updateRes.rowCount === 0) {
+        const check = await query('SELECT id FROM conversations WHERE id = $1', [id]);
+        if (check.rowCount === 0) {
             res.status(404).json({ success: false, message: 'Sesi percakapan tidak ditemukan.' });
             return;
         }
 
-        const updated = updateRes.rows[0];
+        await query(
+            'UPDATE conversations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [status, id]
+        );
+
+        const fetchUpdated = await query('SELECT * FROM conversations WHERE id = $1', [id]);
+        const updated = fetchUpdated.rows[0];
 
         // Beri tahu partisipan di room
         const io = getIo();

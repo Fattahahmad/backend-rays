@@ -23,6 +23,7 @@ apiRouter.use('/users', userRoutes);
 apiRouter.use('/faqs', faqRoutes);
 apiRouter.use('/testimonials', testimonialRoutes);
 apiRouter.use('/blogs', blogRoutes);
+apiRouter.use('/articles', blogRoutes); // Alias rute ramah frontend (/api/articles/admin/images, dll)
 apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/products', productRoutes);
 apiRouter.use('/coupons', couponRoutes);

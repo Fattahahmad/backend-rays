@@ -7,20 +7,20 @@ const VALID_ORDER_STATUSES = ['pending_payment', 'paid', 'processing', 'shipped'
 
 /**
  * Helper untuk men-generate nomor pesanan unik
- * Format: ORD-YYYYMMDD-XXXX (contoh: ORD-20260923-4819)
+ * Format: ORD-YYYYMMDD-XXXXXX (contoh: ORD-20261028-481923)
  */
 function generateOrderNumber(): string {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    const random = Math.floor(1000 + Math.random() * 9000);
+    const random = Math.floor(100000 + Math.random() * 900000);
     return `ORD-${yyyy}${mm}${dd}-${random}`;
 }
 
 /**
  * POST /api/orders/checkout (Customer)
- * Melakukan checkout keranjang belanja: memotong stok, mengunci harga, menerapkan diskon kupon
+ * Melakukan checkout keranjang belanja: memotong stok secara atomic, mengunci harga, menerapkan diskon kupon
  */
 export async function checkoutOrder(req: Request, res: Response): Promise<void> {
     try {
@@ -42,7 +42,29 @@ export async function checkoutOrder(req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // 1. Verifikasi setiap item produk, ketersediaan stok, dan hitung subtotal
+        // 1. Ekstrak seluruh ID produk untuk validasi batch (1 kueri tunggal yang efisien)
+        const productIds: number[] = [];
+        for (const item of items) {
+            const productId = parseInt(item.product_id);
+            const quantity = parseInt(item.quantity);
+            if (!productId || !quantity || quantity <= 0) {
+                res.status(400).json({ success: false, message: 'Data produk atau kuantiti tidak valid.' });
+                return;
+            }
+            productIds.push(productId);
+        }
+
+        const placeholders = productIds.map((_, i) => `$${i + 1}`).join(', ');
+        const productsResult = await query(
+            `SELECT id, name, price, stock, is_active FROM products WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+            productIds
+        );
+
+        const productMap = new Map<number, any>();
+        for (const prod of productsResult.rows) {
+            productMap.set(prod.id, prod);
+        }
+
         let subtotal = 0;
         const validatedItems: Array<{
             product_id: number;
@@ -55,23 +77,12 @@ export async function checkoutOrder(req: Request, res: Response): Promise<void> 
         for (const item of items) {
             const productId = parseInt(item.product_id);
             const quantity = parseInt(item.quantity);
+            const product = productMap.get(productId);
 
-            if (!productId || !quantity || quantity <= 0) {
-                res.status(400).json({ success: false, message: 'Data produk atau kuantiti tidak valid.' });
-                return;
-            }
-
-            const productResult = await query(
-                'SELECT id, name, price, stock, is_active FROM products WHERE id = $1 AND deleted_at IS NULL',
-                [productId]
-            );
-
-            if (productResult.rowCount === 0 || !productResult.rows[0].is_active) {
+            if (!product || !product.is_active) {
                 res.status(400).json({ success: false, message: `Produk dengan ID ${productId} tidak ditemukan atau sedang tidak aktif.` });
                 return;
             }
-
-            const product = productResult.rows[0];
 
             if (product.stock < quantity) {
                 res.status(400).json({
@@ -139,12 +150,14 @@ export async function checkoutOrder(req: Request, res: Response): Promise<void> 
         const numShippingCost = Math.max(0, Number(shipping_cost) || 0);
         const grandTotal = Math.max(0, subtotal - discountAmount) + numShippingCost;
 
-        // 4. Generate Nomor Pesanan Unik
+        // 4. Generate Nomor Pesanan Unik (Dibatasi 5 percobaan untuk cegah infinite loop)
         let orderNumber = generateOrderNumber();
-        while (true) {
+        let attempts = 0;
+        while (attempts < 5) {
             const check = await query('SELECT id FROM orders WHERE order_number = $1', [orderNumber]);
             if (check.rowCount === 0) break;
             orderNumber = generateOrderNumber();
+            attempts++;
         }
 
         // 5. Simpan Pesanan ke Tabel orders
@@ -170,18 +183,49 @@ export async function checkoutOrder(req: Request, res: Response): Promise<void> 
         const newOrderResult = await query('SELECT * FROM orders WHERE order_number = $1', [orderNumber]);
         const orderId = newOrderResult.rows[0].id;
 
-        // 6. Simpan Detail Item (Kunci Harga) & Potong Stok Produk
+        // 6. Simpan Detail Item & Potong Stok secara Atomic (Cegah Race Condition / Stok Minus)
+        const deductedItems: Array<{ product_id: number; quantity: number }> = [];
+        let stockFailed = false;
+        let failedProductName = '';
+
         for (const item of validatedItems) {
+            // Atomic update: hanya kurangi stok jika stok saat ini masih mencukupi
+            const stockUpdateResult = await query(
+                'UPDATE products SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND stock >= $1',
+                [item.quantity, item.product_id]
+            );
+
+            if (stockUpdateResult.rowCount === 0) {
+                stockFailed = true;
+                failedProductName = item.name;
+                break;
+            }
+
+            deductedItems.push({ product_id: item.product_id, quantity: item.quantity });
+
             await query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price_at_checkout)
                  VALUES ($1, $2, $3, $4)`,
                 [orderId, item.product_id, item.quantity, item.price]
             );
+        }
 
-            await query(
-                'UPDATE products SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-                [item.quantity, item.product_id]
-            );
+        // Jika salah satu item gagal karena stok habis saat race condition, lakukan Rollback
+        if (stockFailed) {
+            for (const item of deductedItems) {
+                await query('UPDATE products SET stock = stock + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
+                    item.quantity,
+                    item.product_id,
+                ]);
+            }
+            await query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
+            await query('DELETE FROM orders WHERE id = $1', [orderId]);
+
+            res.status(409).json({
+                success: false,
+                message: `Stok untuk '${failedProductName}' baru saja habis dibeli oleh pelanggan lain. Pesanan dibatalkan, silakan cek kembali keranjang belanja Anda.`,
+            });
+            return;
         }
 
         const createdOrder = newOrderResult.rows[0];
@@ -472,8 +516,17 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
 
         const currentOrder = check.rows[0];
 
+        // Mencegah menghidupkan kembali pesanan yang sudah dibatalkan
+        if (currentOrder.status === 'canceled') {
+            res.status(400).json({
+                success: false,
+                message: 'Pesanan yang telah dibatalkan tidak dapat diaktifkan kembali.',
+            });
+            return;
+        }
+
         // Jika dibatalkan dan status sebelumnya bukan canceled, kembalikan stok barang (Auto-Restock)
-        if (status === 'canceled' && currentOrder.status !== 'canceled') {
+        if (status === 'canceled') {
             const items = await query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
             for (const item of items.rows) {
                 await query('UPDATE products SET stock = stock + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
@@ -520,5 +573,61 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
     } catch (error) {
         console.error('Update order status error:', error);
         res.status(500).json({ success: false, message: 'Gagal memperbarui status pesanan.' });
+    }
+}
+
+/**
+ * PATCH /api/orders/:orderNumber/cancel (Customer)
+ * Customer membatalkan pesanan mandiri yang masih menunggu pembayaran (pending_payment)
+ */
+export async function cancelMyOrder(req: Request, res: Response): Promise<void> {
+    try {
+        const { orderNumber } = req.params;
+        const userId = req.user?.id;
+
+        const orderResult = await query(
+            'SELECT id, user_id, status, order_number FROM orders WHERE order_number = $1',
+            [orderNumber]
+        );
+
+        if (orderResult.rowCount === 0) {
+            res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+            return;
+        }
+
+        const order = orderResult.rows[0];
+
+        if (order.user_id !== userId) {
+            res.status(403).json({ success: false, message: 'Anda tidak memiliki hak akses membatalkan pesanan ini.' });
+            return;
+        }
+
+        if (order.status !== 'pending_payment') {
+            res.status(400).json({
+                success: false,
+                message: `Pesanan berstatus '${order.status}' tidak dapat dibatalkan mandiri. Silakan hubungi customer service kami.`,
+            });
+            return;
+        }
+
+        // Restock produk secara otomatis
+        const items = await query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [order.id]);
+        for (const item of items.rows) {
+            await query('UPDATE products SET stock = stock + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
+                item.quantity,
+                item.product_id,
+            ]);
+        }
+
+        await query("UPDATE orders SET status = 'canceled', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [order.id]);
+
+        res.json({
+            success: true,
+            message: `Pesanan '${order.order_number}' berhasil dibatalkan dan stok produk telah dikembalikan.`,
+            data: { order_number: order.order_number, status: 'canceled' },
+        });
+    } catch (error) {
+        console.error('Cancel my order error:', error);
+        res.status(500).json({ success: false, message: 'Gagal membatalkan pesanan.' });
     }
 }

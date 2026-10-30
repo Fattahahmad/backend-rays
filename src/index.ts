@@ -2,18 +2,39 @@ import 'dotenv/config';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import apiRouter from './routes/index.ts';
 import { auditLogMiddleware } from './middlewares/audit.middleware.ts';
+import { apiLimiter } from './middlewares/rateLimiter.middleware.ts';
 import { initSocketServer } from './services/socket.service.ts';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Global Middlewares
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Mengaktifkan trust proxy untuk reverse proxy (Nginx, Hostinger, Cloudflare, Load Balancer)
+app.set('trust proxy', 1);
+
+// Global Security Headers (Mengizinkan pemuatan aset gambar statis lintas domain)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// CORS Configuration
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : (process.env.NODE_ENV === 'production'
+        ? ['https://raysautocare.com', 'https://admin.raysautocare.com', 'https://www.raysautocare.com']
+        : '*');
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
+
+// Global Body Parsing Middlewares (Dibatasi 1MB untuk mencegah Memory & Payload DoS)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(auditLogMiddleware);
 
 // Static Uploads File Serving
@@ -29,8 +50,8 @@ app.get('/', (req, res) => {
     });
 });
 
-// Centralized API Routes
-app.use('/api', apiRouter);
+// Centralized API Routes dengan Rate Limiting Perlindungan Abuse
+app.use('/api', apiLimiter, apiRouter);
 
 // 404 Not Found Handler
 app.use((req, res) => {
@@ -46,7 +67,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     if (err.type === 'entity.too.large' || (err as any).status === 413) {
         res.status(413).json({
             success: false,
-            message: 'Ukuran data (payload) request terlalu besar. Maksimal 10MB.',
+            message: 'Ukuran data (payload) request terlalu besar. Maksimal 1MB.',
         });
         return;
     }

@@ -1,6 +1,6 @@
 -- ========================================================================
 -- AUTO-GENERATED FOR HOSTINGER MYSQL / MARIADB
--- Generated at: 2026-10-26T03:58:14.944Z
+-- Generated at: 2026-10-29T06:53:34.996Z
 -- ========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -291,5 +291,57 @@ CREATE TABLE IF NOT EXISTS banners (
     deleted_at TIMESTAMP NULL
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Source: 1790100300000_alter-banners-columns-to-text.sql
+ALTER TABLE banners ALTER COLUMN image_url TYPE TEXT;
+ALTER TABLE banners ALTER COLUMN button_url TYPE TEXT;
+ALTER TABLE banners ALTER COLUMN title TYPE TEXT;
+
+-- Source: 1790100400000_add-refresh-token-to-users.sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token TEXT;
+
+-- Source: 1790100500000_alter-users-avatar-url-to-text.sql
+ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT;
+
+-- Source: 1790100600000_enhance-blogs-and-create-article-media.sql
+-- 1. Tambah kolom-kolom baru pada tabel blogs untuk SEO, GEO, dan kategori
+ALTER TABLE blogs
+    ADD COLUMN IF NOT EXISTS category VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS meta_title VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS meta_description TEXT,
+    ADD COLUMN IF NOT EXISTS canonical_url VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS thumbnail_url TEXT,
+    ADD COLUMN IF NOT EXISTS thumbnail_alt VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS reading_time_minutes INT DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS focus_keyphrase VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS tags JSON DEFAULT '[]'::JSON,
+    ADD COLUMN IF NOT EXISTS key_takeaways JSON DEFAULT '[]'::JSON,
+    ADD COLUMN IF NOT EXISTS faqs JSON DEFAULT '[]'::JSON,
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PUBLISHED';
+
+-- Sync image_url ke thumbnail_url untuk data lama jika ada
+UPDATE blogs SET thumbnail_url = image_url WHERE thumbnail_url IS NULL AND image_url IS NOT NULL;
+
+-- 2. Buat tabel article_media untuk manajemen aset gambar artikel
+CREATE TABLE IF NOT EXISTS article_media (
+    id VARCHAR(50) PRIMARY KEY,
+    article_id INT REFERENCES blogs(id) ON DELETE SET NULL,
+    url TEXT NOT NULL,
+    storage_key VARCHAR(255),
+    original_name VARCHAR(255),
+    alt_text VARCHAR(500),
+    mime_type VARCHAR(50) DEFAULT 'image/webp',
+    width INT,
+    height INT,
+    size INT,
+    uploaded_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX IF NOT EXISTS idx_article_media_article_id ON article_media(article_id);
+CREATE INDEX IF NOT EXISTS idx_article_media_created_at ON article_media(created_at);
+CREATE INDEX IF NOT EXISTS idx_blogs_status ON blogs(status);
+CREATE INDEX IF NOT EXISTS idx_blogs_category ON blogs(category);
 
 SET FOREIGN_KEY_CHECKS = 1;

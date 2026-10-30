@@ -9,12 +9,13 @@ import {
     deleteProductImage,
     setPrimaryProductImage,
 } from '../controllers/product.controller.ts';
-import { authenticateToken, requireRoles } from '../middlewares/auth.middleware.ts';
+import { authenticateToken, optionalAuthenticateToken, requireRoles } from '../middlewares/auth.middleware.ts';
 
 const router = Router();
 
 // Public Routes (Katalog Toko Online & Detail Barang)
-router.get('/', listProducts);
+// Menggunakan optionalAuthenticateToken agar admin dapat menyertakan parameter ?show_all=true
+router.get('/', optionalAuthenticateToken, listProducts);
 router.get('/:slug', getProductBySlug);
 
 // Admin CMS Routes (Manajemen Produk & Galeri Foto)

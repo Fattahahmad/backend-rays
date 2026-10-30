@@ -32,6 +32,28 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 }
 
 /**
+ * Middleware untuk memverifikasi token opsional
+ * Jika header Authorization dikirimkan dan sah, req.user akan diisi.
+ * Jika tidak dikirimkan, request tetap dilanjutkan sebagai tamu publik.
+ */
+export function optionalAuthenticateToken(req: Request, _res: Response, next: NextFunction): void {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+        req.user = decoded;
+    } catch {
+        // Token tidak valid atau kedaluwarsa, abaikan dan lanjut sebagai publik
+    }
+    next();
+}
+
+/**
  * Middleware Role-Based Access Control (RBAC).
  * Membatasi akses endpoint hanya untuk role tertentu (misal: 'admin', 'super_admin').
  */

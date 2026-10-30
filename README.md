@@ -83,3 +83,14 @@ Project ini dilengkapi dengan file koleksi Postman yang memiliki fitur **Auto-sa
 3. Pilih environment **`Backend Rays (Local)`** di dropdown pojok kanan atas Postman.
 4. Anda bisa menjalankan request secara berurutan atau klik kanan folder koleksi &rarr; **Run collection** untuk pengujian otomatis seluruh skenario (Register &rarr; OTP &rarr; Login &rarr; Profile &rarr; RBAC 403 Security Check).
 
+---
+
+## 4. Dokumentasi Teknis Tambahan (`/docs`)
+
+Dokumentasi arsitektur dan panduan integrasi modul spesifik tersedia pada folder [`docs/`](file:///c:/Users/USER/Documents/backend-rays/docs):
+- [**Panduan Profil, Avatar & Media Upload**](file:///c:/Users/USER/Documents/backend-rays/docs/profile_and_avatar_guide.md): Panduan integrasi upload foto avatar (1-step form-data vs 2-step JSON) dan format `avatar_preview_url` untuk FE.
+- [**Integrasi Web Live Chat (Socket.io)**](file:///c:/Users/USER/Documents/backend-rays/docs/live_chat_integration.md): Panduan integrasi event WebSocket dan fallback HTTP untuk widget chat pengunjung dan inbox CS Admin CMS.
+- [**Integrasi Google Analytics 4 (GA4)**](file:///c:/Users/USER/Documents/backend-rays/docs/google_analytics_integration.md): Panduan konfigurasi service account dan pengambilan data analitik dashboard CMS.
+- [**Tracking Meta Pixel & Conversions API (CAPI)**](file:///c:/Users/USER/Documents/backend-rays/docs/analytics_and_pixel_tracking.md): Panduan server-side event tracking untuk Facebook & Instagram Ads.
+- [**Spesifikasi Kalkulator Layanan & Estimasi Harga**](file:///c:/Users/USER/Documents/backend-rays/docs/service_calculator_spec.md): Formula perhitungan harga booking dan detailing service.
+

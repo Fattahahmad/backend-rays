@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { recordAuditLog } from '../services/audit.service.ts';
+import { sanitizeObject } from '../utils/sanitize.util.ts';
 
 const MUTATION_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
 
@@ -42,9 +43,9 @@ export function auditLogMiddleware(req: Request, res: Response, next: NextFuncti
                 details: {
                     method: req.method,
                     url: req.originalUrl,
-                    body: req.body,
+                    body: sanitizeObject(req.body),
                     params: req.params,
-                    query: req.query,
+                    query: sanitizeObject(req.query),
                     statusCode: res.statusCode,
                 },
                 req,

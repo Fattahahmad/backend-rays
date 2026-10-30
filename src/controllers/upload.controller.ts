@@ -1,21 +1,21 @@
 import type { Request, Response } from 'express';
 import { deleteFileIfExists } from '../utils/file.util.ts';
+import { convertAndSaveToWebp } from '../utils/image.util.ts';
 
 /**
  * POST /api/upload/single
- * Mengunggah 1 file gambar atau dokumen ke server lokal.
+ * Mengunggah 1 file gambar, otomatis dikonversi dan dikompresi ke format .webp (kualitas 80%).
  * Jika parameter old_url disertakan, file lama tersebut otomatis dihapus dari storage.
  */
 export async function uploadSingleFile(req: Request, res: Response): Promise<void> {
     try {
-        if (!req.file) {
-            res.status(400).json({ success: false, message: 'Tidak ada file yang dikirimkan.' });
+        if (!req.file || !req.file.buffer) {
+            res.status(400).json({ success: false, message: 'Tidak ada file yang dikirimkan atau file kosong.' });
             return;
         }
 
         const folder = (req.query.folder as string) || 'general';
-        const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_\-]/g, '');
-        const relativeUrl = `/uploads/${sanitizedFolder}/${req.file.filename}`;
+        const processed = await convertAndSaveToWebp(req.file.buffer, folder);
 
         // Jika request mengirimkan old_url (misal saat mengganti file di form edit)
         const oldUrl = (req.query.old_url as string) || (req.query.oldUrl as string) || req.body?.old_url || req.body?.oldUrl;
@@ -26,12 +26,14 @@ export async function uploadSingleFile(req: Request, res: Response): Promise<voi
 
         res.status(201).json({
             success: true,
-            message: oldFileDeleted ? 'File berhasil diunggah dan file lama telah digantikan.' : 'File berhasil diunggah.',
+            message: oldFileDeleted 
+                ? 'File berhasil diunggah dan dikonversi ke WebP, serta file lama telah digantikan.' 
+                : 'File berhasil diunggah dan dikonversi ke format WebP teroptimasi.',
             data: {
-                url: relativeUrl,
-                filename: req.file.filename,
-                size: req.file.size,
-                mimetype: req.file.mimetype,
+                url: processed.relativeUrl,
+                filename: processed.filename,
+                size: processed.size,
+                mimetype: processed.mimetype,
                 old_file_deleted: oldFileDeleted,
             },
         });
@@ -43,12 +45,12 @@ export async function uploadSingleFile(req: Request, res: Response): Promise<voi
 
 /**
  * PUT or POST /api/upload/replace
- * Mengunggah file baru sekaligus menghapus file lama yang digantikan dari storage
+ * Mengunggah file baru (dikonversi ke .webp) sekaligus menghapus file lama yang digantikan dari storage
  */
 export async function replaceUploadedFile(req: Request, res: Response): Promise<void> {
     try {
-        if (!req.file) {
-            res.status(400).json({ success: false, message: 'Tidak ada file baru yang dikirimkan.' });
+        if (!req.file || !req.file.buffer) {
+            res.status(400).json({ success: false, message: 'Tidak ada file baru yang dikirimkan atau file kosong.' });
             return;
         }
 
@@ -59,17 +61,16 @@ export async function replaceUploadedFile(req: Request, res: Response): Promise<
         }
 
         const folder = (req.query.folder as string) || 'general';
-        const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_\-]/g, '');
-        const relativeUrl = `/uploads/${sanitizedFolder}/${req.file.filename}`;
+        const processed = await convertAndSaveToWebp(req.file.buffer, folder);
 
         res.json({
             success: true,
-            message: 'File berhasil diperbarui dan file lama telah dibersihkan dari storage.',
+            message: 'File berhasil diperbarui ke format WebP dan file lama telah dibersihkan dari storage.',
             data: {
-                url: relativeUrl,
-                filename: req.file.filename,
-                size: req.file.size,
-                mimetype: req.file.mimetype,
+                url: processed.relativeUrl,
+                filename: processed.filename,
+                size: processed.size,
+                mimetype: processed.mimetype,
                 old_file_deleted: oldFileDeleted,
             },
         });
@@ -81,30 +82,43 @@ export async function replaceUploadedFile(req: Request, res: Response): Promise<
 
 /**
  * POST /api/upload/multiple
- * Mengunggah hingga 5 file gambar/dokumen sekaligus
+ * Mengunggah hingga 5 file gambar sekaligus (seluruhnya dikonversi ke format .webp teroptimasi)
  */
 export async function uploadMultipleFiles(req: Request, res: Response): Promise<void> {
     try {
-        const files = req.files as Express.Multer.File[];
+        const rawFiles = req.files;
+        const files: Express.Multer.File[] = Array.isArray(rawFiles)
+            ? rawFiles
+            : (rawFiles ? Object.values(rawFiles).flat() : []);
 
         if (!files || files.length === 0) {
             res.status(400).json({ success: false, message: 'Tidak ada file yang dikirimkan.' });
             return;
         }
 
-        const folder = (req.query.folder as string) || 'general';
-        const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_\-]/g, '');
+        const validFiles = files.filter(f => Boolean(f && f.buffer));
+        if (validFiles.length === 0) {
+            res.status(400).json({ success: false, message: 'File yang dikirimkan tidak valid.' });
+            return;
+        }
 
-        const uploadedData = files.map(file => ({
-            url: `/uploads/${sanitizedFolder}/${file.filename}`,
-            filename: file.filename,
-            size: file.size,
-            mimetype: file.mimetype,
-        }));
+        const folder = (req.query.folder as string) || 'general';
+
+        const uploadedData = await Promise.all(
+            validFiles.map(async file => {
+                const processed = await convertAndSaveToWebp(file.buffer, folder);
+                return {
+                    url: processed.relativeUrl,
+                    filename: processed.filename,
+                    size: processed.size,
+                    mimetype: processed.mimetype,
+                };
+            })
+        );
 
         res.status(201).json({
             success: true,
-            message: `${uploadedData.length} file berhasil diunggah.`,
+            message: `${uploadedData.length} file berhasil diunggah dan dikonversi ke WebP teroptimasi.`,
             data: uploadedData,
         });
     } catch (error: any) {

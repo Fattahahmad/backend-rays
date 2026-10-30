@@ -364,16 +364,16 @@ export async function updateBanner(req: Request, res: Response): Promise<void> {
             button_url: req.body.button_url ?? current.button_url,
         });
 
-        const updateResult = await query(
+        await query(
             `UPDATE banners 
              SET sort_order = $1, image_url = $2, badge_text = $3, title = $4,
                  button_show = $5, button_text = $6, button_url = $7, is_active = $8, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $9
-             RETURNING *`,
+             WHERE id = $9`,
             [sortOrder, imageUrl, newBadge, newTitle, btnShow, btnText, btnUrl, isActive, id]
         );
 
-        const updatedBanner = updateResult.rows[0];
+        const fetchUpdated = await query('SELECT * FROM banners WHERE id = $1', [id]);
+        const updatedBanner = fetchUpdated.rows[0];
 
         // Audit Log
         if (req.user) {
@@ -420,15 +420,17 @@ export async function toggleBannerStatus(req: Request, res: Response): Promise<v
 
         const newStatus = rawIsActive !== undefined ? (rawIsActive === true || rawIsActive === 'true') : !check.rows[0].is_active;
 
-        const result = await query(
-            'UPDATE banners SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+        await query(
+            'UPDATE banners SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
             [newStatus, id]
         );
+
+        const fetchUpdated = await query('SELECT * FROM banners WHERE id = $1', [id]);
 
         res.json({
             success: true,
             message: `Status banner berhasil diubah menjadi ${newStatus ? 'Aktif' : 'Nonaktif'}.`,
-            data: formatBanner(result.rows[0]),
+            data: formatBanner(fetchUpdated.rows[0]),
         });
     } catch (error: any) {
         console.error('Error toggling banner status:', error);
