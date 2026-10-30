@@ -66,7 +66,19 @@ export function convertPostgresToMysql(): void {
         // 6. Ganti INTEGER -> INT
         mysqlSql = mysqlSql.replace(/\bINTEGER\b/gi, 'INT');
 
-        // 7. Tambahkan IF NOT EXISTS dan ENGINE=InnoDB khusus pada CREATE TABLE
+        // 7. Ganti sintaks ALTER COLUMN ... TYPE ... -> MODIFY COLUMN ... (Sintaks MySQL)
+        mysqlSql = mysqlSql.replace(/ALTER\s+COLUMN\s+(\w+)\s+TYPE\s+(\w+)/gi, 'MODIFY COLUMN $1 $2');
+
+        // 8. Hapus casting PostgreSQL seperti ::JSON, ::jsonb, ::text
+        mysqlSql = mysqlSql.replace(/::\w+/g, '');
+
+        // 9. Format default JSON array untuk MySQL 8 / MariaDB: DEFAULT ('[]')
+        mysqlSql = mysqlSql.replace(/DEFAULT\s+'\[\]'/gi, "DEFAULT ('[]')");
+
+        // 10. Normalisasi CREATE INDEX (Hapus IF NOT EXISTS untuk kompatibilitas MySQL)
+        mysqlSql = mysqlSql.replace(/CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS/gi, 'CREATE INDEX');
+
+        // 11. Tambahkan IF NOT EXISTS dan ENGINE=InnoDB khusus pada CREATE TABLE
         mysqlSql = mysqlSql.replace(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(([\s\S]*?)\)\s*;/gi, (_match, tableName, tableBody) => {
             return `CREATE TABLE IF NOT EXISTS ${tableName} (${tableBody}\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
         });

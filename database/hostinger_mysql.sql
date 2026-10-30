@@ -1,6 +1,6 @@
 -- ========================================================================
 -- AUTO-GENERATED FOR HOSTINGER MYSQL / MARIADB
--- Generated at: 2026-10-29T06:53:34.996Z
+-- Generated at: 2026-10-30T03:40:58.838Z
 -- ========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -293,15 +293,15 @@ CREATE TABLE IF NOT EXISTS banners (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Source: 1790100300000_alter-banners-columns-to-text.sql
-ALTER TABLE banners ALTER COLUMN image_url TYPE TEXT;
-ALTER TABLE banners ALTER COLUMN button_url TYPE TEXT;
-ALTER TABLE banners ALTER COLUMN title TYPE TEXT;
+ALTER TABLE banners MODIFY COLUMN image_url TEXT;
+ALTER TABLE banners MODIFY COLUMN button_url TEXT;
+ALTER TABLE banners MODIFY COLUMN title TEXT;
 
 -- Source: 1790100400000_add-refresh-token-to-users.sql
 ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token TEXT;
 
 -- Source: 1790100500000_alter-users-avatar-url-to-text.sql
-ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT;
+ALTER TABLE users MODIFY COLUMN avatar_url TEXT;
 
 -- Source: 1790100600000_enhance-blogs-and-create-article-media.sql
 -- 1. Tambah kolom-kolom baru pada tabel blogs untuk SEO, GEO, dan kategori
@@ -314,9 +314,9 @@ ALTER TABLE blogs
     ADD COLUMN IF NOT EXISTS thumbnail_alt VARCHAR(255),
     ADD COLUMN IF NOT EXISTS reading_time_minutes INT DEFAULT 1,
     ADD COLUMN IF NOT EXISTS focus_keyphrase VARCHAR(150),
-    ADD COLUMN IF NOT EXISTS tags JSON DEFAULT '[]'::JSON,
-    ADD COLUMN IF NOT EXISTS key_takeaways JSON DEFAULT '[]'::JSON,
-    ADD COLUMN IF NOT EXISTS faqs JSON DEFAULT '[]'::JSON,
+    ADD COLUMN IF NOT EXISTS tags JSON DEFAULT ('[]'),
+    ADD COLUMN IF NOT EXISTS key_takeaways JSON DEFAULT ('[]'),
+    ADD COLUMN IF NOT EXISTS faqs JSON DEFAULT ('[]'),
     ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PUBLISHED';
 
 -- Sync image_url ke thumbnail_url untuk data lama jika ada
@@ -339,9 +339,9 @@ CREATE TABLE IF NOT EXISTS article_media (
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX IF NOT EXISTS idx_article_media_article_id ON article_media(article_id);
-CREATE INDEX IF NOT EXISTS idx_article_media_created_at ON article_media(created_at);
-CREATE INDEX IF NOT EXISTS idx_blogs_status ON blogs(status);
-CREATE INDEX IF NOT EXISTS idx_blogs_category ON blogs(category);
+CREATE INDEX idx_article_media_article_id ON article_media(article_id);
+CREATE INDEX idx_article_media_created_at ON article_media(created_at);
+CREATE INDEX idx_blogs_status ON blogs(status);
+CREATE INDEX idx_blogs_category ON blogs(category);
 
 SET FOREIGN_KEY_CHECKS = 1;
