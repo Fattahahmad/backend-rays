@@ -32,7 +32,7 @@ jobs:
 
       # 4. Upload file hasil build ke Subdomain Hostinger via FTP
       - name: FTP Deploy to Hostinger Subdomain
-        uses: SamKirsch/ftp-deploy-action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
