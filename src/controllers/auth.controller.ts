@@ -102,10 +102,19 @@ export async function register(req: Request, res: Response): Promise<void> {
             [normalizedEmail, otpCode, 'registration', expiresAt]
         );
 
-        console.log(`[OTP REGISTRATION] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[OTP REGISTRATION] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        }
 
         // Kirim email OTP via Nodemailer (Mailtrap di Dev / Hostinger di Prod)
-        await sendOtpEmail(normalizedEmail, otpCode, name);
+        const mailResult = await sendOtpEmail(normalizedEmail, otpCode, name);
+        if (!mailResult.success) {
+            res.status(502).json({
+                success: false,
+                message: 'Akun tersimpan, tetapi email OTP gagal dikirim. Silakan coba kirim ulang OTP.',
+            });
+            return;
+        }
 
         res.status(201).json({
             success: true,
@@ -225,12 +234,20 @@ export async function resendOtp(req: Request, res: Response): Promise<void> {
             [normalizedEmail, otpCode, type, expiresAt]
         );
 
-        console.log(`[RESEND OTP ${type.toUpperCase()}] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[RESEND OTP ${type.toUpperCase()}] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        }
 
-        if (type === 'forgot_password') {
-            await sendForgotPasswordEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
-        } else {
-            await sendOtpEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
+        const mailResult = type === 'forgot_password'
+            ? await sendForgotPasswordEmail(normalizedEmail, otpCode, userCheck.rows[0].name)
+            : await sendOtpEmail(normalizedEmail, otpCode, userCheck.rows[0].name);
+
+        if (!mailResult.success) {
+            res.status(502).json({
+                success: false,
+                message: 'Email OTP gagal dikirim. Silakan coba kembali beberapa saat lagi.',
+            });
+            return;
         }
 
         res.json({
@@ -630,10 +647,19 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
             [normalizedEmail, otpCode, 'forgot_password', expiresAt]
         );
 
-        console.log(`[FORGOT PASSWORD OTP] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[FORGOT PASSWORD OTP] Email: ${normalizedEmail} | Kode: ${otpCode}`);
+        }
 
         // Kirim email notifikasi OTP reset kata sandi
-        await sendForgotPasswordEmail(normalizedEmail, otpCode, user.name);
+        const mailResult = await sendForgotPasswordEmail(normalizedEmail, otpCode, user.name);
+        if (!mailResult.success) {
+            res.status(502).json({
+                success: false,
+                message: 'Email reset kata sandi gagal dikirim. Silakan coba kembali beberapa saat lagi.',
+            });
+            return;
+        }
 
         res.json({
             success: true,

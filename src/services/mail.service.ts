@@ -15,9 +15,10 @@ export interface SendEmailResult {
  * Kompatibel 100% untuk Mailtrap (Dev) dan Hostinger (Production)
  */
 function createTransporter() {
-    const host = process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io';
-    const port = parseInt(process.env.SMTP_PORT || '2525', 10);
-    const user = process.env.SMTP_USER;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = (process.env.SMTP_HOST || (isProduction ? 'smtp.hostinger.com' : 'sandbox.smtp.mailtrap.io')).trim();
+    const port = Number(process.env.SMTP_PORT || (isProduction ? 465 : 2525));
+    const user = process.env.SMTP_USER?.trim();
     const pass = process.env.SMTP_PASS;
 
     // Jika kredensial belum diisi, kembalikan null (akan otomatis menggunakan simulator)
@@ -25,16 +26,58 @@ function createTransporter() {
         return null;
     }
 
-    const isSecure = port === 465; // Port 465 menggunakan SSL (Hostinger)
+    if (!Number.isInteger(port) || port <= 0) {
+        throw new Error('SMTP_PORT tidak valid. Gunakan 465 untuk SSL atau 587 untuk STARTTLS.');
+    }
+
+    const isSecure = port === 465;
 
     return nodemailer.createTransport({
         host,
         port,
         secure: isSecure,
+        requireTLS: !isSecure,
         auth: {
             user,
             pass,
         },
+        tls: {
+            minVersion: 'TLSv1.2',
+            servername: host,
+        },
+        connectionTimeout: 15_000,
+        greetingTimeout: 15_000,
+        socketTimeout: 30_000,
+        logger: process.env.SMTP_DEBUG === 'true',
+        debug: process.env.SMTP_DEBUG === 'true',
+    });
+}
+
+function getSenderAddress() {
+    const address = process.env.SMTP_USER?.trim();
+    const configuredFrom = process.env.SMTP_FROM?.trim();
+    const normalizedFrom = configuredFrom?.replace(/^(["'])(.*)\1$/, '$2');
+
+    if (!address) {
+        return undefined;
+    }
+
+    // SMTP_FROM may include a display name, for example:
+    // "Rays Autocare <support@raysautocare.id>".
+    // Keep SMTP_USER as the safe fallback so the sender remains authenticated.
+    return normalizedFrom || {
+        name: 'Rays Autocare',
+        address,
+    };
+}
+
+function logMailError(context: string, err: any): void {
+    console.error(`[Mail Service Error] ${context}:`, {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        responseCode: err?.responseCode,
+        response: err?.response,
     });
 }
 
@@ -43,7 +86,7 @@ function createTransporter() {
  */
 export async function sendOtpEmail(toEmail: string, otpCode: string, userName?: string): Promise<SendEmailResult> {
     const transporter = createTransporter();
-    const fromAddress = process.env.SMTP_FROM || '"Rays Autocare" <no-reply@raysautocare.com>';
+    const fromAddress = getSenderAddress();
     const name = userName || 'Pelanggan Setia';
 
     // JIKA KREDENSIAL SMTP BELUM DIISI:
@@ -52,10 +95,9 @@ export async function sendOtpEmail(toEmail: string, otpCode: string, userName?: 
         if (process.env.NODE_ENV !== 'production') {
             console.log(`[Mail Simulator] Email OTP untuk ${toEmail}: ${otpCode} (SMTP_USER/PASS belum diatur di .env)`);
         }
-        return {
-            success: true,
-            simulated: true,
-        };
+        return process.env.NODE_ENV === 'production'
+            ? { success: false, simulated: false, error: 'SMTP_USER atau SMTP_PASS belum diatur.' }
+            : { success: true, simulated: true };
     }
 
     // Template Email HTML Premium Rays Autocare
@@ -128,7 +170,7 @@ export async function sendOtpEmail(toEmail: string, otpCode: string, userName?: 
             messageId: info.messageId,
         };
     } catch (err: any) {
-        console.error('[Mail Service Error] Gagal mengirim email OTP:', err.message);
+        logMailError('Gagal mengirim email OTP', err);
         return {
             success: false,
             error: err.message,
@@ -141,17 +183,16 @@ export async function sendOtpEmail(toEmail: string, otpCode: string, userName?: 
  */
 export async function sendForgotPasswordEmail(toEmail: string, otpCode: string, userName?: string): Promise<SendEmailResult> {
     const transporter = createTransporter();
-    const fromAddress = process.env.SMTP_FROM || '"Rays Autocare" <no-reply@raysautocare.com>';
+    const fromAddress = getSenderAddress();
     const name = userName || 'Pelanggan Setia';
 
     if (!transporter) {
         if (process.env.NODE_ENV !== 'production') {
             console.log(`[Mail Simulator] Email Reset Password untuk ${toEmail}: ${otpCode} (SMTP_USER/PASS belum diatur di .env)`);
         }
-        return {
-            success: true,
-            simulated: true,
-        };
+        return process.env.NODE_ENV === 'production'
+            ? { success: false, simulated: false, error: 'SMTP_USER atau SMTP_PASS belum diatur.' }
+            : { success: true, simulated: true };
     }
 
     const htmlTemplate = `
@@ -222,7 +263,7 @@ export async function sendForgotPasswordEmail(toEmail: string, otpCode: string, 
             messageId: info.messageId,
         };
     } catch (err: any) {
-        console.error('[Mail Service Error] Gagal mengirim email reset password:', err.message);
+        logMailError('Gagal mengirim email reset password', err);
         return {
             success: false,
             error: err.message,
