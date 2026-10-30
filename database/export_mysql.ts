@@ -66,7 +66,11 @@ export function convertPostgresToMysql(): void {
         // 6. Ganti INTEGER -> INT
         mysqlSql = mysqlSql.replace(/\bINTEGER\b/gi, 'INT');
 
-        // 7. Ganti sintaks ALTER COLUMN ... TYPE ... -> MODIFY COLUMN ... (Sintaks MySQL)
+        // 7. Ganti sintaks PostgreSQL ALTER COLUMN ... DROP NOT NULL -> MODIFY COLUMN ... NULL (MySQL)
+        mysqlSql = mysqlSql.replace(/ALTER\s+COLUMN\s+phone_number\s+DROP\s+NOT\s+NULL/gi, 'MODIFY COLUMN phone_number VARCHAR(50) NULL');
+        mysqlSql = mysqlSql.replace(/ALTER\s+COLUMN\s+(\w+)\s+DROP\s+NOT\s+NULL/gi, 'MODIFY COLUMN $1 VARCHAR(255) NULL');
+
+        // 8. Ganti sintaks ALTER COLUMN ... TYPE ... -> MODIFY COLUMN ... (Sintaks MySQL)
         mysqlSql = mysqlSql.replace(/ALTER\s+COLUMN\s+(\w+)\s+TYPE\s+(\w+)/gi, 'MODIFY COLUMN $1 $2');
 
         // 8. Hapus casting PostgreSQL seperti ::JSON, ::jsonb, ::text

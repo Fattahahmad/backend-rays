@@ -1,6 +1,6 @@
 -- ========================================================================
 -- AUTO-GENERATED FOR HOSTINGER MYSQL / MARIADB
--- Generated at: 2026-10-30T03:40:58.838Z
+-- Generated at: 2026-10-30T06:10:11.033Z
 -- ========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -247,7 +247,7 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- Source: 1790100000000_enhance-chat-and-service-tables.sql
 -- 1. Penyesuaian Tabel Conversations untuk Web Live Chat
-ALTER TABLE conversations ALTER COLUMN phone_number DROP NOT NULL;
+ALTER TABLE conversations MODIFY COLUMN phone_number VARCHAR(50) NULL;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guest_name VARCHAR(100);
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS guest_email VARCHAR(100);
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
