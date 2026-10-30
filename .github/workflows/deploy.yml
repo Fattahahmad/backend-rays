@@ -38,7 +38,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           # Path target subdomain di Hostinger (sesuaikan nama folder subdomain kamu)
-          server-dir: ./public_html/api/
+          server-dir: ./
           # Kecualikan file source code TypeScript & config development
           exclude: |
             **/.git**
