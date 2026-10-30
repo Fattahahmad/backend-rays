@@ -10,7 +10,8 @@ import { apiLimiter } from './middlewares/rateLimiter.middleware.ts';
 import { initSocketServer } from './services/socket.service.ts';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Hostinger injects PORT at runtime. Port 3000 is the supported local fallback.
+const PORT = Number(process.env.PORT) || 3000;
 
 // Mengaktifkan trust proxy untuk reverse proxy (Nginx, Hostinger, Cloudflare, Load Balancer)
 app.set('trust proxy', 1);
@@ -21,14 +22,35 @@ app.use(helmet({
 }));
 
 // CORS Configuration
-const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : (process.env.NODE_ENV === 'production'
-        ? ['https://raysautocare.com', 'https://admin.raysautocare.com', 'https://www.raysautocare.com']
-        : '*');
+const productionOrigins = [
+    'https://raysautocare.id',
+    'https://www.raysautocare.id',
+    'https://admin.raysautocare.id',
+];
+
+const environmentOrigins = (process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
+const allowedOrigins = new Set([
+    ...productionOrigins,
+    ...environmentOrigins,
+    ...(process.env.NODE_ENV === 'production'
+        ? []
+        : ['http://localhost:3000', 'http://localhost:5173']),
+]);
 
 app.use(cors({
-    origin: allowedOrigins,
+    origin(origin, callback) {
+        // Requests without Origin (server-to-server, health checks, Postman) are allowed.
+        if (!origin || allowedOrigins.has(origin.replace(/\/$/, ''))) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error(`Origin '${origin}' tidak diizinkan oleh CORS.`));
+    },
     credentials: true,
 }));
 
@@ -46,6 +68,15 @@ app.get('/', (req, res) => {
         name: 'Backend Rays Autocare API',
         status: 'online',
         version: '1.0.0',
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// API health-check so https://api.raysautocare.id/api returns a useful response.
+app.get('/api', (req, res) => {
+    res.json({
+        success: true,
+        status: 'online',
         timestamp: new Date().toISOString(),
     });
 });

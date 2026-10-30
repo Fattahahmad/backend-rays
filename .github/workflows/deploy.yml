@@ -1,4 +1,4 @@
-name: Deploy Express Subdomain to Hostinger
+name: Validate Backend for Hostinger
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: hostinger-production
+  group: hostinger-production-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -36,23 +36,5 @@ jobs:
       - name: Verify Production Entry Point
         run: test -f dist/index.js
 
-      - name: FTP Deploy to Hostinger Subdomain
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ./
-          exclude: |
-            **/.git**
-            **/.git/**
-            **/.github/**
-            **/node_modules/**
-            src/**
-            database/**
-            docs/**
-            tsconfig.json
-            .env.example
-            README.md
-            postman_collection.json
-            postman_environment.json
+      # Deployment is handled by Hostinger's Node.js Web App GitHub integration.
+      # FTP only copies files and cannot create or restart a Node.js process.
